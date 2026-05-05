@@ -63,6 +63,8 @@ function openNewLeadPanel() {
     document.getElementById('panelLeadVehiculo').value = "";
     document.getElementById('panelLeadNumero').value = "";
     document.getElementById('panelLeadObs').value = "";
+    const btnDel = document.getElementById('btnDeleteLead');
+    if(btnDel) btnDel.style.display = 'none';
     document.getElementById('leadPanel').classList.add('open');
 }
 
@@ -75,6 +77,8 @@ function openLeadPanel(name, stage, sucursal, vehiculo, numero, obs) {
     document.getElementById('panelLeadVehiculo').value = vehiculo;
     document.getElementById('panelLeadNumero').value = numero;
     document.getElementById('panelLeadObs').value = obs;
+    const btnDel = document.getElementById('btnDeleteLead');
+    if(btnDel) btnDel.style.display = 'block';
     document.getElementById('leadPanel').classList.add('open');
 }
 
@@ -149,6 +153,22 @@ function saveLead() {
     
     if (typeof updateDashboardCharts === 'function') updateDashboardCharts();
     closeLeadPanel();
+}
+
+function deleteCurrentLead() {
+    if (editingRow) {
+        if(confirm("¿Seguro que deseas eliminar este lead? Esta acción no se puede deshacer.")) {
+            editingRow.remove();
+            editingRow = null;
+            triggerNotification('Eliminado', 'Lead eliminado correctamente', 'success');
+            
+            const totalEl = document.getElementById('totalLeadsMetric');
+            if(totalEl) totalEl.innerText = Math.max(0, parseInt(totalEl.innerText) - 1);
+            
+            if (typeof updateDashboardCharts === 'function') updateDashboardCharts();
+            closeLeadPanel();
+        }
+    }
 }
 
 // Simulated Business Logic for Notifications
@@ -371,6 +391,7 @@ function saveDispersion() {
         <td>${calificador}</td>
         <td>${closer}</td>
         <td>${obs}</td>
+        <td><button onclick="event.stopPropagation(); deleteRow(this, 'Dispersión')" style="color: var(--danger); background: none; border: none; cursor: pointer;"><i class="fa-solid fa-trash"></i></button></td>
     `;
     
     const tbody = document.querySelector('#dispersiones .data-table tbody');
@@ -381,6 +402,22 @@ function saveDispersion() {
     triggerNotification('Éxito', 'Dispersión agregada correctamente', 'success');
     updateCloserSummary();
     closeDispersionPanel();
+}
+
+function deleteRow(btn, type) {
+    if(confirm(`¿Seguro que deseas eliminar esta ${type}?`)) {
+        const tr = btn.closest('tr');
+        if(tr) tr.remove();
+        triggerNotification('Eliminado', `${type} eliminada correctamente`, 'success');
+        
+        if (type === 'Dispersión') {
+            updateCloserSummary();
+        } else if (type === 'Lead') {
+            const totalEl = document.getElementById('totalLeadsMetric');
+            if(totalEl) totalEl.innerText = Math.max(0, parseInt(totalEl.innerText) - 1);
+            if (typeof updateDashboardCharts === 'function') updateDashboardCharts();
+        }
+    }
 }
 
 // ==========================================
