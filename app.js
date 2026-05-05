@@ -54,10 +54,10 @@ function triggerNotification(title, message, type = 'info') {
 // ==========================================
 const supabaseUrl = 'https://tbzfvulycbaiwlrewpxv.supabase.co';
 const supabaseKey = 'sb_publishable_KRCLKUEu8d9EJgZzRmbBLg_hdk9IhFK';
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 async function fetchLeads() {
-    const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabaseClient.from('leads').select('*').order('created_at', { ascending: false });
     if (error) {
         console.error('Error fetching leads:', error);
         return;
@@ -170,11 +170,11 @@ async function saveLead() {
     };
 
     if (currentLeadId) {
-        const { error } = await supabase.from('leads').update(leadData).eq('id', currentLeadId);
+        const { error } = await supabaseClient.from('leads').update(leadData).eq('id', currentLeadId);
         if(!error) triggerNotification('Éxito', 'Lead actualizado correctamente', 'success');
         else triggerNotification('Error', 'No se pudo actualizar el lead', 'warning');
     } else {
-        const { error } = await supabase.from('leads').insert([leadData]);
+        const { error } = await supabaseClient.from('leads').insert([leadData]);
         if(!error) triggerNotification('Éxito', 'Nuevo lead creado', 'success');
         else triggerNotification('Error', 'No se pudo crear el lead', 'warning');
     }
@@ -186,7 +186,7 @@ async function saveLead() {
 async function deleteCurrentLead() {
     if (currentLeadId) {
         if(confirm("¿Seguro que deseas eliminar este lead? Esta acción no se puede deshacer.")) {
-            const { error } = await supabase.from('leads').delete().eq('id', currentLeadId);
+            const { error } = await supabaseClient.from('leads').delete().eq('id', currentLeadId);
             if (!error) {
                 currentLeadId = null;
                 triggerNotification('Eliminado', 'Lead eliminado correctamente', 'success');
@@ -374,7 +374,7 @@ function closeDispersionPanel() {
 }
 
 async function fetchDispersiones() {
-    const { data, error } = await supabase.from('dispersiones').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabaseClient.from('dispersiones').select('*').order('created_at', { ascending: false });
     if (error) {
         console.error('Error fetching dispersiones:', error);
         return;
@@ -448,7 +448,7 @@ async function saveDispersion() {
         observaciones: obs
     };
 
-    const { error } = await supabase.from('dispersiones').insert([dispData]);
+    const { error } = await supabaseClient.from('dispersiones').insert([dispData]);
     if(!error) {
         triggerNotification('Éxito', 'Dispersión agregada correctamente', 'success');
         await fetchDispersiones();
@@ -461,7 +461,7 @@ async function saveDispersion() {
 async function deleteRow(btn, type, id) {
     if(confirm(`¿Seguro que deseas eliminar esta ${type}?`)) {
         if (type === 'Dispersión' && id) {
-            const { error } = await supabase.from('dispersiones').delete().eq('id', id);
+            const { error } = await supabaseClient.from('dispersiones').delete().eq('id', id);
             if(!error) {
                 triggerNotification('Eliminado', 'Dispersión eliminada correctamente', 'success');
                 await fetchDispersiones();
