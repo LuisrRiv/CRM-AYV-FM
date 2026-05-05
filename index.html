@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM CM</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" style="position: fixed; inset: 0; background: var(--bg-dark); z-index: 10000; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s ease;">
+        <div style="background: var(--bg-panel); padding: 3rem; border-radius: 1rem; box-shadow: var(--shadow-lg); width: 100%; max-width: 400px; text-align: center; border: 1px solid var(--border-color);">
+            <div class="logo" style="margin-bottom: 2rem; justify-content: center;">
+                <i class="fa-solid fa-bolt" style="color: var(--accent-primary)"></i>
+                <span>CRM CM</span>
+            </div>
+            
+            <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">Iniciar Sesión</h2>
+            
+            <div class="form-group" style="text-align: left;">
+                <label>Usuario</label>
+                <input type="text" class="form-control" id="loginUser" placeholder="Ej. franco">
+            </div>
+            
+            <div class="form-group" style="text-align: left;">
+                <label>Contraseña</label>
+                <input type="password" class="form-control" id="loginPass" placeholder="••••••••">
+            </div>
+            
+            <p id="loginError" style="color: var(--danger); font-size: 0.875rem; margin-bottom: 1rem; display: none;">Credenciales incorrectas.</p>
+            
+            <button class="btn" style="width: 100%; padding: 0.75rem; font-size: 1rem;" onclick="attemptLogin()">Entrar</button>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="logo">
+            <i class="fa-solid fa-bolt"></i>
+            <span>CRM CM</span>
+        </div>
+        <nav class="nav-menu">
+            <a class="nav-item active" data-target="dashboard">
+                <i class="fa-solid fa-chart-pie"></i> Dashboard
+            </a>
+            <a class="nav-item" data-target="leads">
+                <i class="fa-solid fa-users"></i> Reporte de Citas
+            </a>
+            <a class="nav-item" data-target="kanban">
+                <i class="fa-solid fa-list-check"></i> Tareas Pendientes
+            </a>
+            <a class="nav-item" data-target="assets">
+                <i class="fa-solid fa-photo-film"></i> Activos Creativos
+            </a>
+            <a class="nav-item" data-target="dispersiones">
+                <i class="fa-solid fa-money-bill-trend-up"></i> Dispersiones
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="header">
+            <div class="search-bar">
+                <i class="fa-solid fa-search" style="color: var(--text-secondary)"></i>
+                <input type="text" placeholder="Buscar clientes, tareas, activos... (Cmd+K)">
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-outline" onclick="toggleTheme()" id="themeToggleBtn" title="Cambiar Tema" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+                <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-panel); padding: 0.5rem 1rem; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                    <i class="fa-solid fa-calendar-days" style="color: var(--accent-primary)"></i>
+                    <select id="globalMonthFilter" onchange="applyGlobalFilter()" style="background: transparent; border: none; color: var(--text-primary); font-size: 0.875rem; cursor: pointer; outline: none; -webkit-appearance: none; appearance: none; padding-right: 1rem;">
+                        <option value="all" style="background: var(--bg-panel)">Todos los meses</option>
+                        <option value="2026-04" style="background: var(--bg-panel)">Abril 2026</option>
+                        <option value="2026-05" style="background: var(--bg-panel)" selected>Mayo 2026</option>
+                        <option value="2026-06" style="background: var(--bg-panel)">Junio 2026</option>
+                    </select>
+                </div>
+                <button class="btn btn-outline" onclick="triggerNotification('Notificación de Prueba', 'Este es el sistema de alertas')">
+                    <i class="fa-regular fa-bell"></i>
+                </button>
+                <div class="avatar" id="userAvatar" title="Cerrar Sesión" onclick="logout()" style="cursor: pointer;">AM</div>
+            </div>
+        </header>
+
+        <!-- Content Area -->
+        <div class="content-area">
+            
+            <!-- Dashboard View -->
+            <section id="dashboard" class="view-section active">
+                <h1 class="text-2xl mb-4">Resumen General</h1>
+                <div class="flex gap-4 mb-4">
+                    <div style="flex: 1; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem;">
+                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; display: flex; align-items: center;"><i class="fa-solid fa-users" style="margin-right: 0.5rem; color: var(--accent-primary);"></i> Leads Totales</h3>
+                        <p style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem;" id="totalLeadsMetric">3</p>
+                    </div>
+                    <div style="flex: 1; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem;">
+                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; display: flex; align-items: center;"><i class="fa-solid fa-chart-line" style="margin-right: 0.5rem; color: var(--success);"></i> Conversión Estimada</h3>
+                        <p style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem; color: var(--success);">15%</p>
+                    </div>
+                    <div style="flex: 1; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem;">
+                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; display: flex; align-items: center;"><i class="fa-solid fa-list-check" style="margin-right: 0.5rem; color: var(--warning);"></i> Tareas Pendientes</h3>
+                        <p style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem; color: var(--warning);">12</p>
+                    </div>
+                </div>
+                <!-- Graphical Section -->
+                <div class="flex gap-4">
+                    <div style="flex: 2; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; height: 300px;">
+                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">Leads por Sucursal</h3>
+                        <canvas id="branchChart"></canvas>
+                    </div>
+                    <div style="flex: 1; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; height: 300px;">
+                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">Distribución de Status</h3>
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Leads View -->
+            <section id="leads" class="view-section">
+                <div class="flex justify-between items-center mb-4">
+                    <h1 class="text-2xl">Reporte de Citas</h1>
+                    <button class="btn" onclick="openNewLeadPanel()"><i class="fa-solid fa-plus"></i> Nuevo Lead</button>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Sucursal</th>
+                            <th>Nombre</th>
+                            <th>Vehículo</th>
+                            <th>Status</th>
+                            <th>Número</th>
+                            <th>Observaciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr onclick="openLeadPanel('Yamir soto', 'CITA', 'GUADALAJARA', 'Renault Sandero 2017', '3317928264', 'lead del día sábado por la noche, se le envia seguimiento, pero no hay respuesta')">
+                            <td>02/05/2026</td>
+                            <td class="font-medium">GUADALAJARA</td>
+                            <td>Yamir soto</td>
+                            <td>Renault Sandero 2017</td>
+                            <td><span class="badge cita">CITA</span></td>
+                            <td>3317928264</td>
+                            <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">lead del día sábado por la noche, se le envia seguimiento...</td>
+                        </tr>
+                        <tr onclick="openLeadPanel('Ana Garcia', 'EN PROCESO', 'MONTERREY', 'VW Jetta 2019', '8123456789', 'Interesada en financiamiento, llamar el lunes')">
+                            <td>04/05/2026</td>
+                            <td class="font-medium">MONTERREY</td>
+                            <td>Ana Garcia</td>
+                            <td>VW Jetta 2019</td>
+                            <td><span class="badge enproceso">EN PROCESO</span></td>
+                            <td>8123456789</td>
+                            <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Interesada en financiamiento, llamar el lunes</td>
+                        </tr>
+                        <tr onclick="openLeadPanel('Luis Perez', 'DISPERSADO', 'CDMX', 'Nissan Versa 2020', '5512345678', 'Viene el martes a revisar unidad')">
+                            <td>12/04/2026</td>
+                            <td class="font-medium">CDMX</td>
+                            <td>Luis Perez</td>
+                            <td>Nissan Versa 2020</td>
+                            <td><span class="badge dispersado">DISPERSADO</span></td>
+                            <td>5512345678</td>
+                            <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Viene el martes a revisar unidad</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Kanban View -->
+            <section id="kanban" class="view-section">
+                <div class="flex justify-between items-center mb-4">
+                    <h1 class="text-2xl">Tareas Pendientes</h1>
+                    <button class="btn" onclick="openNewTaskPanel()"><i class="fa-solid fa-plus"></i> Nueva Tarea</button>
+                </div>
+                <div class="kanban-board">
+                    <!-- Column: Pendiente -->
+                    <div class="kanban-column" id="col-pending">
+                        <div class="kanban-header">
+                            <span>Pendiente</span>
+                            <span class="column-count">3</span>
+                        </div>
+                        <div class="kanban-cards" ondrop="drop(event)" ondragover="allowDrop(event)">
+                            <div class="kanban-card" draggable="true" ondragstart="drag(event)" id="task-1">
+                                <div class="card-title">Diseño de Landing Page - TechCorp</div>
+                                <div class="card-meta">
+                                    <span><i class="fa-regular fa-clock"></i> 2 Días</span>
+                                    <div class="avatar" style="width: 24px; height: 24px; font-size: 0.6rem;">LD</div>
+                                </div>
+                            </div>
+                            <div class="kanban-card" draggable="true" ondragstart="drag(event)" id="task-2">
+                                <div class="card-title">Copywriting Anuncios Meta</div>
+                                <div class="card-meta">
+                                    <span><i class="fa-solid fa-triangle-exclamation" style="color: var(--danger)"></i> Urgente</span>
+                                    <div class="avatar" style="width: 24px; height: 24px; font-size: 0.6rem; background: var(--success);">UX</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column: En Proceso -->
+                    <div class="kanban-column" id="col-progress">
+                        <div class="kanban-header">
+                            <span>En Proceso <i class="fa-solid fa-spinner fa-spin" style="font-size: 0.8rem; margin-left: 5px;"></i></span>
+                            <span class="column-count">1</span>
+                        </div>
+                        <div class="kanban-cards" ondrop="drop(event)" ondragover="allowDrop(event)">
+                            <div class="kanban-card" draggable="true" ondragstart="drag(event)" id="task-3">
+                                <div class="card-title">Edición Video Promo - Apex</div>
+                                <div class="card-meta">
+                                    <span><i class="fa-regular fa-clock"></i> Hoy</span>
+                                    <div class="avatar" style="width: 24px; height: 24px; font-size: 0.6rem;">VD</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column: En Revisión -->
+                    <div class="kanban-column" id="col-review">
+                        <div class="kanban-header">
+                            <span>En Revisión</span>
+                            <span class="column-count">0</span>
+                        </div>
+                        <div class="kanban-cards" ondrop="drop(event)" ondragover="allowDrop(event)">
+                            <!-- Empty State can go here -->
+                        </div>
+                    </div>
+
+                    <!-- Column: Completado -->
+                    <div class="kanban-column" id="col-completed">
+                        <div class="kanban-header">
+                            <span>Completado</span>
+                            <span class="column-count">0</span>
+                        </div>
+                        <div class="kanban-cards" ondrop="drop(event)" ondragover="allowDrop(event)">
+                            <!-- Completed tasks will be dropped here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Assets View -->
+            <section id="assets" class="view-section">
+                <div class="flex justify-between items-center mb-4">
+                    <h1 class="text-2xl">Activos Creativos</h1>
+                    <button class="btn" onclick="document.getElementById('assetUpload').click()"><i class="fa-solid fa-upload"></i> Subir Archivos</button>
+                    <input type="file" id="assetUpload" style="display: none;" multiple onchange="handleFileUpload(event)">
+                </div>
+                <div id="assetsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.5rem;">
+                    <!-- Asset Card -->
+                    <div style="background: var(--bg-panel); border-radius: 0.75rem; overflow: hidden; border: 1px solid var(--border-color);">
+                        <div style="height: 120px; background: linear-gradient(45deg, #1e293b, #334155); display: flex; align-items: center; justify-content: center;">
+                            <i class="fa-solid fa-image text-2xl" style="color: var(--text-secondary)"></i>
+                        </div>
+                        <div style="padding: 1rem;">
+                            <h4 style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem;">Banner_Promo_V1.png</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-secondary);">TechCorp Inc • 2.4 MB</p>
+                        </div>
+                    </div>
+                    <!-- Asset Card -->
+                    <div style="background: var(--bg-panel); border-radius: 0.75rem; overflow: hidden; border: 1px solid var(--border-color);">
+                        <div style="height: 120px; background: linear-gradient(45deg, #1e293b, #334155); display: flex; align-items: center; justify-content: center;">
+                            <i class="fa-solid fa-file-lines text-2xl" style="color: var(--text-secondary)"></i>
+                        </div>
+                        <div style="padding: 1rem;">
+                            <h4 style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem;">Copy_Meta_Ads.docx</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-secondary);">Innova Solutions • 15 KB</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dispersiones View -->
+            <section id="dispersiones" class="view-section">
+                <div class="flex justify-between items-center mb-4">
+                    <h1 class="text-2xl">Dispersiones Totales</h1>
+                    <div class="flex gap-2">
+                        <button class="btn btn-outline"><i class="fa-solid fa-file-export"></i> Exportar</button>
+                        <button class="btn" onclick="openNewDispersionPanel()"><i class="fa-solid fa-plus"></i> Nueva Dispersión</button>
+                    </div>
+                </div>
+                <!-- Closer Summary Cards -->
+                <div class="flex gap-4 mb-4" id="closerSummaryCards" style="flex-wrap: wrap;">
+                    <!-- Inserted via JS -->
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Sucursal</th>
+                            <th>Fecha</th>
+                            <th>Monto</th>
+                            <th>Calificador</th>
+                            <th>Closer</th>
+                            <th>Observaciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="font-medium">JOSE ANGEL MARIO FIERRO</td>
+                            <td><span class="badge branch-xalapa">XALAPA 20 NOV</span></td>
+                            <td>7/4/2026</td>
+                            <td class="font-medium text-success">$56,000.00</td>
+                            <td></td>
+                            <td>Franco</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td class="font-medium">ISMAEL CRUZ MARROQUIN</td>
+                            <td><span class="badge branch-mty-centro">MONTERREY CENTRO</span></td>
+                            <td>9/4/2026</td>
+                            <td class="font-medium text-success">$212,250.00</td>
+                            <td></td>
+                            <td>Franco</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td class="font-medium">JAVIER RODRIGUEZ NERI</td>
+                            <td><span class="badge branch-puebla">PUEBLA ANZURES</span></td>
+                            <td>20/04/2026</td>
+                            <td class="font-medium text-success">$56,287.50</td>
+                            <td></td>
+                            <td>Vianey</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td class="font-medium">JORGE RUIZ MARTINEZ</td>
+                            <td><span class="badge branch-queretaro">QUERETARO</span></td>
+                            <td>22/04/2026</td>
+                            <td class="font-medium text-success">$80,999.00</td>
+                            <td></td>
+                            <td>Franco</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td class="font-medium">Alicia Carrillo Rodriguez</td>
+                            <td><span class="badge branch-mty-terranova">MONTERREY TERRANOVA</span></td>
+                            <td>29/04/2026</td>
+                            <td class="font-medium text-success">$89,000.00</td>
+                            <td></td>
+                            <td>Franco</td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Slide-over Panel (Lead Details) -->
+    <div class="slide-over" id="leadPanel">
+        <div class="slide-header">
+            <h2 class="text-xl" id="panelTitle">Detalles del Lead</h2>
+            <button class="close-btn" onclick="closeLeadPanel()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="slide-content">
+            <div class="form-group">
+                <label>Nombre del Lead</label>
+                <input type="text" class="form-control" id="panelLeadNameInput">
+            </div>
+            <div class="form-group">
+                <label>Status (Etapa)</label>
+                <select class="form-control" id="panelLeadStage" onchange="simulateStageChange(this)">
+                    <option value="CITA">CITA</option>
+                    <option value="DISPERSADO">DISPERSADO</option>
+                    <option value="DETENIDO">DETENIDO</option>
+                    <option value="NO VIABLE/ RECHAZADO/ SIN INTERES">NO VIABLE/ RECHAZADO/ SIN INTERES</option>
+                    <option value="EN PROCESO">EN PROCESO</option>
+                    <option value="NO ASISTIO">NO ASISTIO</option>
+                </select>
+                <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;"><i class="fa-brands fa-slack"></i> Un cambio de estado notificará vía Slack.</p>
+            </div>
+            
+            <div class="form-group">
+                <label>Sucursal</label>
+                <select class="form-control" id="panelLeadSucursal">
+                    <option value="" disabled selected>Selecciona una sucursal</option>
+                    <option value="XALAPA 20 NOV">XALAPA 20 NOV</option>
+                    <option value="XALAPA ARAUCARIAS">XALAPA ARAUCARIAS</option>
+                    <option value="VERACRUZ">VERACRUZ</option>
+                    <option value="ZAPOPAN">ZAPOPAN</option>
+                    <option value="MONTERREY CENTRO">MONTERREY CENTRO</option>
+                    <option value="MONTERREY TERRANOVA">MONTERREY TERRANOVA</option>
+                    <option value="MONTERREY MOVIL">MONTERREY MOVIL</option>
+                    <option value="PUEBLA ANZURES">PUEBLA ANZURES</option>
+                    <option value="PUEBLA CHOLULA">PUEBLA CHOLULA</option>
+                    <option value="QUERETARO">QUERETARO</option>
+                    <option value="QUERETARO MOVIL">QUERETARO MOVIL</option>
+                    <option value="GUADALAJARA MOVIL">GUADALAJARA MOVIL</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Vehículo</label>
+                <input type="text" class="form-control" id="panelLeadVehiculo">
+            </div>
+            <div class="form-group">
+                <label>Número</label>
+                <input type="text" class="form-control" id="panelLeadNumero">
+            </div>
+            <div class="form-group">
+                <label>Observaciones</label>
+                <textarea class="form-control" id="panelLeadObs" rows="3"></textarea>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid var(--border-color); margin: 2rem 0;">
+
+            <h3 class="text-xl mb-3">Activos Vinculados</h3>
+            <div style="background: var(--bg-dark); padding: 1rem; border-radius: 0.5rem; border: 1px dashed var(--border-color); text-align: center; color: var(--text-secondary); cursor: pointer;">
+                <i class="fa-solid fa-cloud-arrow-up mb-2 text-xl"></i>
+                <p style="font-size: 0.875rem;">Arrastra archivos aquí para vincular</p>
+            </div>
+
+            <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                <button class="btn" style="flex: 1;" onclick="saveLead()">Guardar Cambios</button>
+                <button class="btn btn-outline" style="flex: 1;" onclick="closeLeadPanel()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide-over Panel (Dispersion) -->
+    <div class="slide-over" id="dispersionPanel">
+        <div class="slide-header">
+            <h2 class="text-xl">Nueva Dispersión</h2>
+            <button class="close-btn" onclick="closeDispersionPanel()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="slide-content">
+            <div class="form-group">
+                <label>Cliente</label>
+                <input type="text" class="form-control" id="dispCliente">
+            </div>
+            <div class="form-group">
+                <label>Sucursal</label>
+                <select class="form-control" id="dispSucursal">
+                    <option value="XALAPA 20 NOV">XALAPA 20 NOV</option>
+                    <option value="XALAPA ARAUCARIAS">XALAPA ARAUCARIAS</option>
+                    <option value="VERACRUZ">VERACRUZ</option>
+                    <option value="ZAPOPAN">ZAPOPAN</option>
+                    <option value="MONTERREY CENTRO">MONTERREY CENTRO</option>
+                    <option value="MONTERREY TERRANOVA">MONTERREY TERRANOVA</option>
+                    <option value="MONTERREY MOVIL">MONTERREY MOVIL</option>
+                    <option value="QUERETARO">QUERETARO</option>
+                    <option value="QUERETARO MOVIL">QUERETARO MOVIL</option>
+                    <option value="GUADALAJARA MOVIL">GUADALAJARA MOVIL</option>
+                    <option value="PUEBLA ANZURES">PUEBLA ANZURES</option>
+                    <option value="PUEBLA CHOLULA">PUEBLA CHOLULA</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Fecha</label>
+                <input type="date" class="form-control" id="dispFecha">
+            </div>
+            <div class="form-group">
+                <label>Monto</label>
+                <input type="text" class="form-control" id="dispMonto" placeholder="$0.00">
+            </div>
+            <div class="form-group">
+                <label>Calificador</label>
+                <input type="text" class="form-control" id="dispCalificador">
+            </div>
+            <div class="form-group">
+                <label>Closer</label>
+                <input type="text" class="form-control" id="dispCloser">
+            </div>
+            <div class="form-group">
+                <label>Observaciones</label>
+                <textarea class="form-control" id="dispObs" rows="3"></textarea>
+            </div>
+
+            <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                <button class="btn" style="flex: 1;" onclick="saveDispersion()">Guardar</button>
+                <button class="btn btn-outline" style="flex: 1;" onclick="closeDispersionPanel()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Slide-over Panel (Task) -->
+    <div class="slide-over" id="taskPanel">
+        <div class="slide-header">
+            <h2 class="text-xl">Nueva Tarea</h2>
+            <button class="close-btn" onclick="closeTaskPanel()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="slide-content">
+            <div class="form-group">
+                <label>Título de la Tarea</label>
+                <input type="text" class="form-control" id="taskTitle" placeholder="Ej. Diseño de Landing Page">
+            </div>
+            <div class="form-group">
+                <label>Responsable (Iniciales)</label>
+                <input type="text" class="form-control" id="taskAssignee" placeholder="Ej. AM" maxlength="2">
+            </div>
+            <div class="form-group">
+                <label>Tiempo Estimado o Prioridad</label>
+                <input type="text" class="form-control" id="taskMeta" placeholder="Ej. 2 Días o Urgente">
+            </div>
+
+            <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                <button class="btn" style="flex: 1;" onclick="saveTask()">Guardar Tarea</button>
+                <button class="btn btn-outline" style="flex: 1;" onclick="closeTaskPanel()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Media Viewer Modal -->
+    <div id="mediaViewerModal" style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 9999; display: none; align-items: center; justify-content: center; flex-direction: column; opacity: 0; transition: opacity 0.3s ease; backdrop-filter: blur(5px);">
+        <button onclick="closeMediaViewer()" style="position: absolute; top: 2rem; right: 2rem; background: rgba(255,255,255,0.1); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.25rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'"><i class="fa-solid fa-xmark"></i></button>
+        <div id="mediaViewerContent" style="max-width: 90vw; max-height: 80vh; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;"></div>
+        <h3 id="mediaViewerTitle" style="color: white; margin-top: 1rem; font-weight: 500; font-size: 1.25rem;"></h3>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
