@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -141,34 +142,8 @@
                             <th></th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr onclick="openLeadPanel('Yamir soto', 'CITA', 'GUADALAJARA', 'Renault Sandero 2017', '3317928264', 'lead del día sábado por la noche, se le envia seguimiento, pero no hay respuesta')">
-                            <td>02/05/2026</td>
-                            <td class="font-medium">GUADALAJARA</td>
-                            <td>Yamir soto</td>
-                            <td>Renault Sandero 2017</td>
-                            <td><span class="badge cita">CITA</span></td>
-                            <td>3317928264</td>
-                            <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">lead del día sábado por la noche, se le envia seguimiento...</td>
-                        </tr>
-                        <tr onclick="openLeadPanel('Ana Garcia', 'EN PROCESO', 'MONTERREY', 'VW Jetta 2019', '8123456789', 'Interesada en financiamiento, llamar el lunes')">
-                            <td>04/05/2026</td>
-                            <td class="font-medium">MONTERREY</td>
-                            <td>Ana Garcia</td>
-                            <td>VW Jetta 2019</td>
-                            <td><span class="badge enproceso">EN PROCESO</span></td>
-                            <td>8123456789</td>
-                            <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Interesada en financiamiento, llamar el lunes</td>
-                        </tr>
-                        <tr onclick="openLeadPanel('Luis Perez', 'DISPERSADO', 'CDMX', 'Nissan Versa 2020', '5512345678', 'Viene el martes a revisar unidad')">
-                            <td>12/04/2026</td>
-                            <td class="font-medium">CDMX</td>
-                            <td>Luis Perez</td>
-                            <td>Nissan Versa 2020</td>
-                            <td><span class="badge dispersado">DISPERSADO</span></td>
-                            <td>5512345678</td>
-                            <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Viene el martes a revisar unidad</td>
-                        </tr>
+                    <tbody id="leadsTableBody">
+                        <!-- Llenado dinámicamente desde Supabase -->
                     </tbody>
                 </table>
             </section>
@@ -302,57 +277,8 @@
                             <th></th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr>
-                            <td class="font-medium">JOSE ANGEL MARIO FIERRO</td>
-                            <td><span class="badge branch-xalapa">XALAPA 20 NOV</span></td>
-                            <td>7/4/2026</td>
-                            <td class="font-medium text-success">$56,000.00</td>
-                            <td></td>
-                            <td>Franco</td>
-                            <td></td>
-                            <td><button onclick="event.stopPropagation(); deleteRow(this, 'Dispersión')" style="color: var(--danger); background: none; border: none; cursor: pointer;"><i class="fa-solid fa-trash"></i></button></td>
-                        </tr>
-                        <tr>
-                            <td class="font-medium">ISMAEL CRUZ MARROQUIN</td>
-                            <td><span class="badge branch-mty-centro">MONTERREY CENTRO</span></td>
-                            <td>9/4/2026</td>
-                            <td class="font-medium text-success">$212,250.00</td>
-                            <td></td>
-                            <td>Franco</td>
-                            <td></td>
-                            <td><button onclick="event.stopPropagation(); deleteRow(this, 'Dispersión')" style="color: var(--danger); background: none; border: none; cursor: pointer;"><i class="fa-solid fa-trash"></i></button></td>
-                        </tr>
-                        <tr>
-                            <td class="font-medium">JAVIER RODRIGUEZ NERI</td>
-                            <td><span class="badge branch-puebla">PUEBLA ANZURES</span></td>
-                            <td>20/04/2026</td>
-                            <td class="font-medium text-success">$56,287.50</td>
-                            <td></td>
-                            <td>Vianey</td>
-                            <td></td>
-                            <td><button onclick="event.stopPropagation(); deleteRow(this, 'Dispersión')" style="color: var(--danger); background: none; border: none; cursor: pointer;"><i class="fa-solid fa-trash"></i></button></td>
-                        </tr>
-                        <tr>
-                            <td class="font-medium">JORGE RUIZ MARTINEZ</td>
-                            <td><span class="badge branch-queretaro">QUERETARO</span></td>
-                            <td>22/04/2026</td>
-                            <td class="font-medium text-success">$80,999.00</td>
-                            <td></td>
-                            <td>Franco</td>
-                            <td></td>
-                            <td><button onclick="event.stopPropagation(); deleteRow(this, 'Dispersión')" style="color: var(--danger); background: none; border: none; cursor: pointer;"><i class="fa-solid fa-trash"></i></button></td>
-                        </tr>
-                        <tr>
-                            <td class="font-medium">Alicia Carrillo Rodriguez</td>
-                            <td><span class="badge branch-mty-terranova">MONTERREY TERRANOVA</span></td>
-                            <td>29/04/2026</td>
-                            <td class="font-medium text-success">$89,000.00</td>
-                            <td></td>
-                            <td>Franco</td>
-                            <td></td>
-                            <td><button onclick="event.stopPropagation(); deleteRow(this, 'Dispersión')" style="color: var(--danger); background: none; border: none; cursor: pointer;"><i class="fa-solid fa-trash"></i></button></td>
-                        </tr>
+                    <tbody id="dispersionesTableBody">
+                        <!-- Llenado dinámicamente desde Supabase -->
                     </tbody>
                 </table>
             </section>

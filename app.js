@@ -50,12 +50,73 @@ function triggerNotification(title, message, type = 'info') {
 }
 
 // ==========================================
+// Supabase Integration
+// ==========================================
+const supabaseUrl = 'https://tbzfvulycbaiwlrewpxv.supabase.co';
+const supabaseKey = 'sb_publishable_KRCLKUEu8d9EJgZzRmbBLg_hdk9IhFK';
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+async function fetchLeads() {
+    const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
+    if (error) {
+        console.error('Error fetching leads:', error);
+        return;
+    }
+    const tbody = document.getElementById('leadsTableBody');
+    if(!tbody) return;
+    tbody.innerHTML = '';
+    
+    let leadsCount = 0;
+    data.forEach(lead => {
+        leadsCount++;
+        
+        let badgeClass = 'cita';
+        if(lead.etapa === 'DISPERSADO') badgeClass = 'dispersado';
+        if(lead.etapa === 'DETENIDO') badgeClass = 'detenido';
+        if(lead.etapa === 'NO VIABLE/ RECHAZADO/ SIN INTERES') badgeClass = 'rechazado';
+        if(lead.etapa === 'EN PROCESO') badgeClass = 'enproceso';
+        if(lead.etapa === 'NO ASISTIO') badgeClass = 'noasistio';
+        
+        let shortObs = lead.observaciones || '';
+        if(shortObs.length > 50) shortObs = shortObs.substring(0, 50) + "...";
+        
+        const dateStr = new Date(lead.created_at).toLocaleDateString('en-GB');
+        
+        const safeName = (lead.nombre || '').replace(/'/g, "\\'");
+        const safeSucursal = (lead.sucursal || '').replace(/'/g, "\\'");
+        const safeVehiculo = (lead.vehiculo || '').replace(/'/g, "\\'");
+        const safeNumero = (lead.numero || '').replace(/'/g, "\\'");
+        const safeObs = (lead.observaciones || '').replace(/'/g, "\\'");
+        
+        const tr = document.createElement('tr');
+        tr.dataset.id = lead.id;
+        tr.setAttribute('onclick', `openLeadPanel('${lead.id}', '${safeName}', '${lead.etapa}', '${safeSucursal}', '${safeVehiculo}', '${safeNumero}', '${safeObs}')`);
+        
+        tr.innerHTML = `
+            <td>${dateStr}</td>
+            <td class="font-medium">${lead.sucursal || ''}</td>
+            <td>${lead.nombre || ''}</td>
+            <td>${lead.vehiculo || ''}</td>
+            <td><span class="badge ${badgeClass}">${lead.etapa || ''}</span></td>
+            <td>${lead.numero || ''}</td>
+            <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${shortObs}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+    
+    const totalEl = document.getElementById('totalLeadsMetric');
+    if(totalEl) totalEl.innerText = leadsCount;
+    
+    if (typeof applyGlobalFilter === 'function') applyGlobalFilter();
+}
+
+// ==========================================
 // Slide-over Logic (Lead Details)
 // ==========================================
-let editingRow = null;
+let currentLeadId = null;
 
 function openNewLeadPanel() {
-    editingRow = null;
+    currentLeadId = null;
     document.getElementById('panelTitle').innerText = "Nuevo Lead";
     document.getElementById('panelLeadNameInput').value = "";
     document.getElementById('panelLeadStage').value = "CITA";
@@ -68,8 +129,8 @@ function openNewLeadPanel() {
     document.getElementById('leadPanel').classList.add('open');
 }
 
-function openLeadPanel(name, stage, sucursal, vehiculo, numero, obs) {
-    editingRow = event.currentTarget; 
+function openLeadPanel(id, name, stage, sucursal, vehiculo, numero, obs) {
+    currentLeadId = id;
     document.getElementById('panelTitle').innerText = "Detalles del Lead";
     document.getElementById('panelLeadNameInput').value = name;
     document.getElementById('panelLeadStage').value = stage;
@@ -86,7 +147,7 @@ function closeLeadPanel() {
     document.getElementById('leadPanel').classList.remove('open');
 }
 
-function saveLead() {
+async function saveLead() {
     const name = document.getElementById('panelLeadNameInput').value;
     const stage = document.getElementById('panelLeadStage').value;
     const sucursal = document.getElementById('panelLeadSucursal').value;
@@ -99,74 +160,41 @@ function saveLead() {
         return;
     }
 
-    let badgeClass = 'cita';
-    if(stage === 'DISPERSADO') badgeClass = 'dispersado';
-    if(stage === 'DETENIDO') badgeClass = 'detenido';
-    if(stage === 'NO VIABLE/ RECHAZADO/ SIN INTERES') badgeClass = 'rechazado';
-    if(stage === 'EN PROCESO') badgeClass = 'enproceso';
-    if(stage === 'NO ASISTIO') badgeClass = 'noasistio';
+    const leadData = {
+        nombre: name,
+        etapa: stage,
+        sucursal: sucursal,
+        vehiculo: vehiculo,
+        numero: numero,
+        observaciones: obs
+    };
 
-    const safeObs = obs.replace(/'/g, "\\'");
-    const safeName = name.replace(/'/g, "\\'");
-    const safeSucursal = sucursal.replace(/'/g, "\\'");
-    const safeVehiculo = vehiculo.replace(/'/g, "\\'");
-    const safeNumero = numero.replace(/'/g, "\\'");
-
-    let shortObs = obs;
-    if(shortObs.length > 50) shortObs = shortObs.substring(0, 50) + "...";
-
-    // Generate today's date if it's a new row, or reuse if editing
-    let dateStr = new Date().toLocaleDateString('en-GB'); // DD/MM/YYYY
-    if (editingRow) {
-        dateStr = editingRow.cells[0].innerText;
-    }
-
-    const trContent = `
-        <td>${dateStr}</td>
-        <td class="font-medium">${sucursal}</td>
-        <td>${name}</td>
-        <td>${vehiculo}</td>
-        <td><span class="badge ${badgeClass}">${stage}</span></td>
-        <td>${numero}</td>
-        <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${shortObs}</td>
-    `;
-    
-    const clickHandler = `openLeadPanel('${safeName}', '${stage}', '${safeSucursal}', '${safeVehiculo}', '${safeNumero}', '${safeObs}')`;
-
-    if (editingRow) {
-        editingRow.innerHTML = trContent;
-        editingRow.setAttribute('onclick', clickHandler);
-        triggerNotification('Éxito', 'Lead actualizado correctamente', 'success');
+    if (currentLeadId) {
+        const { error } = await supabase.from('leads').update(leadData).eq('id', currentLeadId);
+        if(!error) triggerNotification('Éxito', 'Lead actualizado correctamente', 'success');
+        else triggerNotification('Error', 'No se pudo actualizar el lead', 'warning');
     } else {
-        const tbody = document.querySelector('.data-table tbody');
-        const tr = document.createElement('tr');
-        tr.setAttribute('onclick', clickHandler);
-        tr.innerHTML = trContent;
-        tbody.insertBefore(tr, tbody.firstChild);
-        
-        const totalEl = document.getElementById('totalLeadsMetric');
-        if(totalEl) {
-            totalEl.innerText = parseInt(totalEl.innerText) + 1;
-        }
-        triggerNotification('Éxito', 'Nuevo lead creado', 'success');
+        const { error } = await supabase.from('leads').insert([leadData]);
+        if(!error) triggerNotification('Éxito', 'Nuevo lead creado', 'success');
+        else triggerNotification('Error', 'No se pudo crear el lead', 'warning');
     }
     
-    if (typeof updateDashboardCharts === 'function') updateDashboardCharts();
+    await fetchLeads();
     closeLeadPanel();
 }
 
-function deleteCurrentLead() {
-    if (editingRow) {
+async function deleteCurrentLead() {
+    if (currentLeadId) {
         if(confirm("¿Seguro que deseas eliminar este lead? Esta acción no se puede deshacer.")) {
-            editingRow.remove();
-            editingRow = null;
-            triggerNotification('Eliminado', 'Lead eliminado correctamente', 'success');
-            
-            const totalEl = document.getElementById('totalLeadsMetric');
-            if(totalEl) totalEl.innerText = Math.max(0, parseInt(totalEl.innerText) - 1);
-            
-            if (typeof updateDashboardCharts === 'function') updateDashboardCharts();
-            closeLeadPanel();
+            const { error } = await supabase.from('leads').delete().eq('id', currentLeadId);
+            if (!error) {
+                currentLeadId = null;
+                triggerNotification('Eliminado', 'Lead eliminado correctamente', 'success');
+                await fetchLeads();
+                closeLeadPanel();
+            } else {
+                triggerNotification('Error', 'No se pudo eliminar', 'warning');
+            }
         }
     }
 }
@@ -345,7 +373,58 @@ function closeDispersionPanel() {
     document.getElementById('dispersionPanel').classList.remove('open');
 }
 
-function saveDispersion() {
+async function fetchDispersiones() {
+    const { data, error } = await supabase.from('dispersiones').select('*').order('created_at', { ascending: false });
+    if (error) {
+        console.error('Error fetching dispersiones:', error);
+        return;
+    }
+    const tbody = document.getElementById('dispersionesTableBody');
+    if(!tbody) return;
+    tbody.innerHTML = '';
+    
+    data.forEach(disp => {
+        let badgeClass = '';
+        if(disp.sucursal === 'XALAPA 20 NOV') badgeClass = 'branch-xalapa';
+        if(disp.sucursal === 'XALAPA ARAUCARIAS') badgeClass = 'branch-xalapa-araucarias';
+        if(disp.sucursal === 'VERACRUZ') badgeClass = 'branch-veracruz';
+        if(disp.sucursal === 'ZAPOPAN') badgeClass = 'branch-zapopan';
+        if(disp.sucursal === 'MONTERREY CENTRO') badgeClass = 'branch-mty-centro';
+        if(disp.sucursal === 'MONTERREY TERRANOVA') badgeClass = 'branch-mty-terranova';
+        if(disp.sucursal === 'MONTERREY MOVIL') badgeClass = 'branch-mty-movil';
+        if(disp.sucursal === 'PUEBLA ANZURES') badgeClass = 'branch-puebla';
+        if(disp.sucursal === 'PUEBLA CHOLULA') badgeClass = 'branch-puebla-cholula';
+        if(disp.sucursal === 'QUERETARO') badgeClass = 'branch-queretaro';
+        if(disp.sucursal === 'QUERETARO MOVIL') badgeClass = 'branch-qro-movil';
+        if(disp.sucursal === 'GUADALAJARA MOVIL') badgeClass = 'branch-gdl-movil';
+        
+        let displayDate = disp.fecha;
+        if (displayDate && displayDate.includes('-')) {
+            const parts = displayDate.split('-');
+            displayDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        
+        const safeMonto = String(disp.monto).startsWith('$') ? disp.monto : '$' + Number(disp.monto).toLocaleString('en-US', {minimumFractionDigits: 2});
+        
+        const tr = document.createElement('tr');
+        tr.dataset.id = disp.id;
+        tr.innerHTML = `
+            <td class="font-medium">${disp.cliente || ''}</td>
+            <td><span class="badge ${badgeClass}">${disp.sucursal || ''}</span></td>
+            <td>${displayDate || ''}</td>
+            <td class="font-medium text-success">${safeMonto}</td>
+            <td>${disp.calificador || ''}</td>
+            <td>${disp.closer || ''}</td>
+            <td>${disp.observaciones || ''}</td>
+            <td><button onclick="event.stopPropagation(); deleteRow(this, 'Dispersión', '${disp.id}')" style="color: var(--danger); background: none; border: none; cursor: pointer;"><i class="fa-solid fa-trash"></i></button></td>
+        `;
+        tbody.appendChild(tr);
+    });
+    
+    updateCloserSummary();
+}
+
+async function saveDispersion() {
     const cliente = document.getElementById('dispCliente').value;
     const sucursal = document.getElementById('dispSucursal').value;
     let fecha = document.getElementById('dispFecha').value;
@@ -359,66 +438,45 @@ function saveDispersion() {
         return;
     }
 
-    // Format date from YYYY-MM-DD to DD/MM/YYYY
-    if (fecha) {
-        const parts = fecha.split('-');
-        if(parts.length === 3) {
-            fecha = `${parts[2]}/${parts[1]}/${parts[0]}`;
-        }
+    const dispData = {
+        cliente: cliente,
+        sucursal: sucursal,
+        fecha: fecha,
+        monto: parseFloat(monto.replace(/[\$,]/g, '')) || 0,
+        calificador: calificador,
+        closer: closer,
+        observaciones: obs
+    };
+
+    const { error } = await supabase.from('dispersiones').insert([dispData]);
+    if(!error) {
+        triggerNotification('Éxito', 'Dispersión agregada correctamente', 'success');
+        await fetchDispersiones();
+        closeDispersionPanel();
+    } else {
+        triggerNotification('Error', 'No se pudo guardar la dispersión', 'warning');
     }
-
-    let badgeClass = '';
-    if(sucursal === 'XALAPA 20 NOV') badgeClass = 'branch-xalapa';
-    if(sucursal === 'XALAPA ARAUCARIAS') badgeClass = 'branch-xalapa-araucarias';
-    if(sucursal === 'VERACRUZ') badgeClass = 'branch-veracruz';
-    if(sucursal === 'ZAPOPAN') badgeClass = 'branch-zapopan';
-    if(sucursal === 'MONTERREY CENTRO') badgeClass = 'branch-mty-centro';
-    if(sucursal === 'MONTERREY TERRANOVA') badgeClass = 'branch-mty-terranova';
-    if(sucursal === 'MONTERREY MOVIL') badgeClass = 'branch-mty-movil';
-    if(sucursal === 'PUEBLA ANZURES') badgeClass = 'branch-puebla';
-    if(sucursal === 'PUEBLA CHOLULA') badgeClass = 'branch-puebla-cholula';
-    if(sucursal === 'QUERETARO') badgeClass = 'branch-queretaro';
-    if(sucursal === 'QUERETARO MOVIL') badgeClass = 'branch-qro-movil';
-    if(sucursal === 'GUADALAJARA MOVIL') badgeClass = 'branch-gdl-movil';
-
-    const safeMonto = monto.startsWith('$') ? monto : '$' + monto;
-
-    const trContent = `
-        <td class="font-medium">${cliente}</td>
-        <td><span class="badge ${badgeClass}">${sucursal}</span></td>
-        <td>${fecha}</td>
-        <td class="font-medium text-success">${safeMonto}</td>
-        <td>${calificador}</td>
-        <td>${closer}</td>
-        <td>${obs}</td>
-        <td><button onclick="event.stopPropagation(); deleteRow(this, 'Dispersión')" style="color: var(--danger); background: none; border: none; cursor: pointer;"><i class="fa-solid fa-trash"></i></button></td>
-    `;
-    
-    const tbody = document.querySelector('#dispersiones .data-table tbody');
-    const tr = document.createElement('tr');
-    tr.innerHTML = trContent;
-    tbody.insertBefore(tr, tbody.firstChild);
-    
-    triggerNotification('Éxito', 'Dispersión agregada correctamente', 'success');
-    updateCloserSummary();
-    closeDispersionPanel();
 }
 
-function deleteRow(btn, type) {
+async function deleteRow(btn, type, id) {
     if(confirm(`¿Seguro que deseas eliminar esta ${type}?`)) {
-        const tr = btn.closest('tr');
-        if(tr) tr.remove();
-        triggerNotification('Eliminado', `${type} eliminada correctamente`, 'success');
-        
-        if (type === 'Dispersión') {
-            updateCloserSummary();
-        } else if (type === 'Lead') {
-            const totalEl = document.getElementById('totalLeadsMetric');
-            if(totalEl) totalEl.innerText = Math.max(0, parseInt(totalEl.innerText) - 1);
-            if (typeof updateDashboardCharts === 'function') updateDashboardCharts();
+        if (type === 'Dispersión' && id) {
+            const { error } = await supabase.from('dispersiones').delete().eq('id', id);
+            if(!error) {
+                triggerNotification('Eliminado', 'Dispersión eliminada correctamente', 'success');
+                await fetchDispersiones();
+            } else {
+                triggerNotification('Error', 'No se pudo eliminar la dispersión', 'warning');
+            }
         }
     }
 }
+
+// Inicializar datos al cargar
+document.addEventListener('DOMContentLoaded', async () => {
+    await fetchLeads();
+    await fetchDispersiones();
+});
 
 // ==========================================
 // Global Month Filter Logic
