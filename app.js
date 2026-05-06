@@ -82,15 +82,17 @@ async function fetchLeads() {
         
         const dateStr = new Date(lead.created_at).toLocaleDateString('en-GB');
         
-        const safeName = (lead.nombre || '').replace(/'/g, "\\'");
-        const safeSucursal = (lead.sucursal || '').replace(/'/g, "\\'");
-        const safeVehiculo = (lead.vehiculo || '').replace(/'/g, "\\'");
-        const safeNumero = (lead.numero || '').replace(/'/g, "\\'");
-        const safeObs = (lead.observaciones || '').replace(/'/g, "\\'");
-        
         const tr = document.createElement('tr');
         tr.dataset.id = lead.id;
-        tr.setAttribute('onclick', `openLeadPanel('${lead.id}', '${safeName}', '${lead.etapa}', '${safeSucursal}', '${safeVehiculo}', '${safeNumero}', '${safeObs}')`);
+        tr.onclick = () => openLeadPanel(
+            lead.id, 
+            lead.nombre || '', 
+            lead.etapa || '', 
+            lead.sucursal || '', 
+            lead.vehiculo || '', 
+            lead.numero || '', 
+            lead.observaciones || ''
+        );
         
         tr.innerHTML = `
             <td>${dateStr}</td>
