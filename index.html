@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CRM CM</title>
+    <title>CM CRM</title>
+    <link rel="icon" type="image/png" href="logo.png">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -14,9 +15,9 @@
     <!-- Login Screen -->
     <div id="loginScreen" style="position: fixed; inset: 0; background: var(--bg-dark); z-index: 10000; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s ease;">
         <div style="background: var(--bg-panel); padding: 3rem; border-radius: 1rem; box-shadow: var(--shadow-lg); width: 100%; max-width: 400px; text-align: center; border: 1px solid var(--border-color);">
-            <div class="logo" style="margin-bottom: 2rem; justify-content: center;">
-                <i class="fa-solid fa-bolt" style="color: var(--accent-primary)"></i>
-                <span>CRM CM</span>
+            <div class="logo" style="margin-bottom: 2rem; justify-content: center; display: flex; align-items: center; gap: 1rem;">
+                <img src="logo.png" alt="MR Logo" style="max-height: 60px;">
+                <span style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">CM CRM</span>
             </div>
             
             <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">Iniciar Sesión</h2>
@@ -40,8 +41,8 @@
     <!-- Sidebar -->
     <aside class="sidebar">
         <div class="logo">
-            <i class="fa-solid fa-bolt"></i>
-            <span>CRM CM</span>
+            <img src="logo.png" alt="MR Logo" style="max-height: 40px;">
+            <span>CM CRM</span>
         </div>
         <nav class="nav-menu">
             <a class="nav-item active" data-target="dashboard">
