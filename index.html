@@ -108,7 +108,7 @@
                     </div>
                     <div style="flex: 1; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem;">
                         <h3 style="color: var(--text-secondary); font-size: 0.875rem; display: flex; align-items: center;"><i class="fa-solid fa-list-check" style="margin-right: 0.5rem; color: var(--warning);"></i> Tareas Pendientes</h3>
-                        <p style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem; color: var(--warning);">12</p>
+                        <p id="pendingTasksMetric" style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem; color: var(--warning);">0</p>
                     </div>
                 </div>
                 <!-- Graphical Section -->
@@ -409,8 +409,15 @@
                 <input type="text" class="form-control" id="taskTitle" placeholder="Ej. Diseño de Landing Page">
             </div>
             <div class="form-group">
-                <label>Responsable (Iniciales)</label>
-                <input type="text" class="form-control" id="taskAssignee" placeholder="Ej. AM" maxlength="2">
+                <label>Responsable</label>
+                <select class="form-control" id="taskAssignee">
+                    <option value="">Seleccionar responsable...</option>
+                    <option value="adminlr">adminlr</option>
+                    <option value="franco lozada">franco lozada</option>
+                    <option value="fabiola mendoza">fabiola mendoza</option>
+                    <option value="fatima morales">fatima morales</option>
+                    <option value="invitado">invitado</option>
+                </select>
             </div>
             <div class="form-group">
                 <label>Tiempo Estimado o Prioridad</label>
@@ -419,6 +426,7 @@
 
             <div style="margin-top: 2rem; display: flex; gap: 1rem;">
                 <button class="btn" style="flex: 1;" onclick="saveTask()">Guardar Tarea</button>
+                <button class="btn btn-outline" style="flex: 1; border-color: var(--danger); color: var(--danger); display: none;" id="btnDeleteTask" onclick="deleteCurrentTask()">Eliminar</button>
                 <button class="btn btn-outline" style="flex: 1;" onclick="closeTaskPanel()">Cancelar</button>
             </div>
         </div>
