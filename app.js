@@ -456,8 +456,7 @@ async function deleteCurrentTask() {
         }
     }
 }
-    closeTaskPanel();
-}
+
 
 // ==========================================
 // Slide-over Logic (Dispersiones)
