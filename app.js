@@ -340,9 +340,10 @@ document.addEventListener('keydown', (e) => {
 let currentTaskId = null;
 
 async function fetchTasks() {
-    const { data, error } = await supabaseClient.from('tareas').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabaseClient.from('tareas').select('*');
     if (error) {
         console.error('Error fetching tasks:', error);
+        triggerNotification('Error de Carga', error.message, 'warning');
         return;
     }
 
