@@ -67,8 +67,13 @@ async function fetchLeads() {
     tbody.innerHTML = '';
     
     let leadsCount = 0;
+    let procesoCount = 0;
     data.forEach(lead => {
         leadsCount++;
+        
+        if (lead.etapa === 'EN PROCESO' || lead.etapa === 'DISPERSADO') {
+            procesoCount++;
+        }
         
         let badgeClass = 'cita';
         if(lead.etapa === 'DISPERSADO') badgeClass = 'dispersado';
@@ -109,6 +114,16 @@ async function fetchLeads() {
     
     const totalEl = document.getElementById('totalLeadsMetric');
     if(totalEl) totalEl.innerText = leadsCount;
+    
+    const conversionEl = document.getElementById('conversionRateMetric');
+    if(conversionEl) {
+        if (leadsCount > 0) {
+            const percentage = Math.round((procesoCount / leadsCount) * 100);
+            conversionEl.innerText = `${percentage}%`;
+        } else {
+            conversionEl.innerText = '0%';
+        }
+    }
     
     if (typeof applyGlobalFilter === 'function') applyGlobalFilter();
 }
