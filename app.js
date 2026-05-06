@@ -99,6 +99,7 @@ async function fetchLeads() {
             <td>${lead.vehiculo || ''}</td>
             <td><span class="badge ${badgeClass}">${lead.etapa || ''}</span></td>
             <td>${lead.numero || ''}</td>
+            <td><span style="font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); background: var(--bg-dark); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">${lead.creado_por || '-'}</span></td>
             <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${shortObs}</td>
         `;
         tbody.appendChild(tr);
@@ -160,13 +161,16 @@ async function saveLead() {
         return;
     }
 
+    const currentUser = localStorage.getItem('crm-logged-in') || 'Desconocido';
+
     const leadData = {
         nombre: name,
         etapa: stage,
         sucursal: sucursal,
         vehiculo: vehiculo,
         numero: numero,
-        observaciones: obs
+        observaciones: obs,
+        creado_por: currentUser
     };
 
     if (currentLeadId) {
