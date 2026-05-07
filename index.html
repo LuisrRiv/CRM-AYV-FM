@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,31 +11,37 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
+
 <body>
 
     <!-- Login Screen -->
-    <div id="loginScreen" style="position: fixed; inset: 0; background: var(--bg-dark); z-index: 10000; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s ease;">
-        <div style="background: var(--bg-panel); padding: 3rem; border-radius: 1rem; box-shadow: var(--shadow-lg); width: 100%; max-width: 400px; text-align: center; border: 1px solid var(--border-color);">
-            <div class="logo" style="margin-bottom: 2rem; justify-content: center; display: flex; align-items: center; gap: 1rem;">
+    <div id="loginScreen"
+        style="position: fixed; inset: 0; background: var(--bg-dark); z-index: 10000; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s ease;">
+        <div
+            style="background: var(--bg-panel); padding: 3rem; border-radius: 1rem; box-shadow: var(--shadow-lg); width: 100%; max-width: 400px; text-align: center; border: 1px solid var(--border-color);">
+            <div class="logo"
+                style="margin-bottom: 2rem; justify-content: center; display: flex; align-items: center; gap: 1rem;">
                 <img src="logo.png" alt="MR Logo" style="max-height: 60px;">
                 <span style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">CM CRM</span>
             </div>
-            
+
             <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">Iniciar Sesión</h2>
-            
+
             <div class="form-group" style="text-align: left;">
                 <label>Usuario</label>
                 <input type="text" class="form-control" id="loginUser" placeholder="Ej. franco">
             </div>
-            
+
             <div class="form-group" style="text-align: left;">
                 <label>Contraseña</label>
                 <input type="password" class="form-control" id="loginPass" placeholder="••••••••">
             </div>
-            
-            <p id="loginError" style="color: var(--danger); font-size: 0.875rem; margin-bottom: 1rem; display: none;">Credenciales incorrectas.</p>
-            
-            <button class="btn" style="width: 100%; padding: 0.75rem; font-size: 1rem;" onclick="attemptLogin()">Entrar</button>
+
+            <p id="loginError" style="color: var(--danger); font-size: 0.875rem; margin-bottom: 1rem; display: none;">
+                Credenciales incorrectas.</p>
+
+            <button class="btn" style="width: 100%; padding: 0.75rem; font-size: 1rem;"
+                onclick="attemptLogin()">Entrar</button>
         </div>
     </div>
 
@@ -72,53 +79,74 @@
                 <input type="text" placeholder="Buscar clientes, tareas, activos... (Cmd+K)">
             </div>
             <div class="header-actions">
-                <button class="btn btn-outline" onclick="toggleTheme()" id="themeToggleBtn" title="Cambiar Tema" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
+                <button class="btn btn-outline" onclick="toggleTheme()" id="themeToggleBtn" title="Cambiar Tema"
+                    style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
                     <i class="fa-solid fa-moon"></i>
                 </button>
-                <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-panel); padding: 0.5rem 1rem; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                <div
+                    style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-panel); padding: 0.5rem 1rem; border-radius: 0.5rem; border: 1px solid var(--border-color);">
                     <i class="fa-solid fa-calendar-days" style="color: var(--accent-primary)"></i>
-                    <select id="globalMonthFilter" onchange="applyGlobalFilter()" style="background: transparent; border: none; color: var(--text-primary); font-size: 0.875rem; cursor: pointer; outline: none; -webkit-appearance: none; appearance: none; padding-right: 1rem;">
+                    <select id="globalMonthFilter" onchange="applyGlobalFilter()"
+                        style="background: transparent; border: none; color: var(--text-primary); font-size: 0.875rem; cursor: pointer; outline: none; -webkit-appearance: none; appearance: none; padding-right: 1rem;">
                         <option value="all" style="background: var(--bg-panel)">Todos los meses</option>
                         <option value="2026-04" style="background: var(--bg-panel)">Abril 2026</option>
                         <option value="2026-05" style="background: var(--bg-panel)" selected>Mayo 2026</option>
                         <option value="2026-06" style="background: var(--bg-panel)">Junio 2026</option>
                     </select>
                 </div>
-                <button class="btn btn-outline" onclick="triggerNotification('Notificación de Prueba', 'Este es el sistema de alertas')">
+                <button class="btn btn-outline"
+                    onclick="triggerNotification('Notificación de Prueba', 'Este es el sistema de alertas')">
                     <i class="fa-regular fa-bell"></i>
                 </button>
-                <div class="avatar" id="userAvatar" title="Cerrar Sesión" onclick="logout()" style="cursor: pointer;">AM</div>
+                <div class="avatar" id="userAvatar" title="Cerrar Sesión" onclick="logout()" style="cursor: pointer;">AM
+                </div>
             </div>
         </header>
 
         <!-- Content Area -->
         <div class="content-area">
-            
+
             <!-- Dashboard View -->
             <section id="dashboard" class="view-section active">
                 <h1 class="text-2xl mb-4">Resumen General</h1>
                 <div class="flex gap-4 mb-4">
                     <div style="flex: 1; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem;">
-                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; display: flex; align-items: center;"><i class="fa-solid fa-users" style="margin-right: 0.5rem; color: var(--accent-primary);"></i> Leads Totales</h3>
+                        <h3
+                            style="color: var(--text-secondary); font-size: 0.875rem; display: flex; align-items: center;">
+                            <i class="fa-solid fa-users"
+                                style="margin-right: 0.5rem; color: var(--accent-primary);"></i> Leads Totales</h3>
                         <p style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem;" id="totalLeadsMetric">3</p>
                     </div>
                     <div style="flex: 1; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem;">
-                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; display: flex; align-items: center;"><i class="fa-solid fa-chart-line" style="margin-right: 0.5rem; color: var(--success);"></i> Conversión Estimada</h3>
-                        <p id="conversionRateMetric" style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem; color: var(--success);">15%</p>
+                        <h3
+                            style="color: var(--text-secondary); font-size: 0.875rem; display: flex; align-items: center;">
+                            <i class="fa-solid fa-chart-line" style="margin-right: 0.5rem; color: var(--success);"></i>
+                            Conversión Estimada</h3>
+                        <p id="conversionRateMetric"
+                            style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem; color: var(--success);">15%
+                        </p>
                     </div>
                     <div style="flex: 1; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem;">
-                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; display: flex; align-items: center;"><i class="fa-solid fa-list-check" style="margin-right: 0.5rem; color: var(--warning);"></i> Tareas Pendientes</h3>
-                        <p id="pendingTasksMetric" style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem; color: var(--warning);">0</p>
+                        <h3
+                            style="color: var(--text-secondary); font-size: 0.875rem; display: flex; align-items: center;">
+                            <i class="fa-solid fa-list-check" style="margin-right: 0.5rem; color: var(--warning);"></i>
+                            Tareas Pendientes</h3>
+                        <p id="pendingTasksMetric"
+                            style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem; color: var(--warning);">0</p>
                     </div>
                 </div>
                 <!-- Graphical Section -->
                 <div class="flex gap-4">
-                    <div style="flex: 2; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; height: 300px;">
-                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">Leads por Sucursal</h3>
+                    <div
+                        style="flex: 2; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; height: 300px;">
+                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">Leads por
+                            Sucursal</h3>
                         <canvas id="branchChart"></canvas>
                     </div>
-                    <div style="flex: 1; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; height: 300px;">
-                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">Distribución de Status</h3>
+                    <div
+                        style="flex: 1; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; height: 300px;">
+                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">Distribución
+                            de Status</h3>
                         <canvas id="statusChart"></canvas>
                     </div>
                 </div>
@@ -128,7 +156,22 @@
             <section id="leads" class="view-section">
                 <div class="flex justify-between items-center mb-4">
                     <h1 class="text-2xl">Reporte de Citas</h1>
-                    <button class="btn" onclick="openNewLeadPanel()"><i class="fa-solid fa-plus"></i> Nuevo Lead</button>
+                    <div class="flex gap-2 items-center">
+                        <!-- Sync Status Indicators -->
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; margin-right: 0.5rem;">
+                            <span id="syncStatusText" style="font-size: 0.7rem; color: var(--text-secondary); white-space: nowrap;">Sin sincronizar</span>
+                            <span id="syncCountdown" style="font-size: 0.65rem; color: var(--accent-primary); white-space: nowrap; margin-top: 2px;">Próxima sync: 5h 0m</span>
+                        </div>
+                        <!-- Manual Sync Button -->
+                        <button class="btn btn-outline" id="btnSyncSheets" onclick="syncLeadsToSheets(true)" title="Sincronizar datos con Google Sheets"
+                            style="display: flex; align-items: center; gap: 0.5rem; border-color: #34a853; color: #34a853; font-size: 0.85rem; padding: 0.5rem 1rem; transition: all 0.2s;"
+                            onmouseover="this.style.background='#34a853'; this.style.color='white';"
+                            onmouseout="this.style.background='transparent'; this.style.color='#34a853';">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Sync Sheets
+                        </button>
+                        <button class="btn" onclick="openNewLeadPanel()"><i class="fa-solid fa-plus"></i> Nuevo
+                            Lead</button>
+                    </div>
                 </div>
                 <table class="data-table">
                     <thead>
@@ -154,7 +197,8 @@
             <section id="kanban" class="view-section">
                 <div class="flex justify-between items-center mb-4">
                     <h1 class="text-2xl">Tareas Pendientes</h1>
-                    <button class="btn" onclick="openNewTaskPanel()"><i class="fa-solid fa-plus"></i> Nueva Tarea</button>
+                    <button class="btn" onclick="openNewTaskPanel()"><i class="fa-solid fa-plus"></i> Nueva
+                        Tarea</button>
                 </div>
                 <div class="kanban-board">
                     <!-- Column: Pendiente -->
@@ -170,7 +214,8 @@
                     <!-- Column: En Proceso -->
                     <div class="kanban-column" id="col-progress">
                         <div class="kanban-header">
-                            <span>En Proceso <i class="fa-solid fa-spinner fa-spin" style="font-size: 0.8rem; margin-left: 5px;"></i></span>
+                            <span>En Proceso <i class="fa-solid fa-spinner fa-spin"
+                                    style="font-size: 0.8rem; margin-left: 5px;"></i></span>
                             <span class="column-count">0</span>
                         </div>
                         <div class="kanban-cards" ondrop="drop(event)" ondragover="allowDrop(event)">
@@ -205,27 +250,36 @@
             <section id="assets" class="view-section">
                 <div class="flex justify-between items-center mb-4">
                     <h1 class="text-2xl">Activos Creativos</h1>
-                    <button class="btn" onclick="document.getElementById('assetUpload').click()"><i class="fa-solid fa-upload"></i> Subir Archivos</button>
-                    <input type="file" id="assetUpload" style="display: none;" multiple onchange="handleFileUpload(event)">
+                    <button class="btn" onclick="document.getElementById('assetUpload').click()"><i
+                            class="fa-solid fa-upload"></i> Subir Archivos</button>
+                    <input type="file" id="assetUpload" style="display: none;" multiple
+                        onchange="handleFileUpload(event)">
                 </div>
-                <div id="assetsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.5rem;">
+                <div id="assetsGrid"
+                    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.5rem;">
                     <!-- Asset Card -->
-                    <div style="background: var(--bg-panel); border-radius: 0.75rem; overflow: hidden; border: 1px solid var(--border-color);">
-                        <div style="height: 120px; background: linear-gradient(45deg, #1e293b, #334155); display: flex; align-items: center; justify-content: center;">
+                    <div
+                        style="background: var(--bg-panel); border-radius: 0.75rem; overflow: hidden; border: 1px solid var(--border-color);">
+                        <div
+                            style="height: 120px; background: linear-gradient(45deg, #1e293b, #334155); display: flex; align-items: center; justify-content: center;">
                             <i class="fa-solid fa-image text-2xl" style="color: var(--text-secondary)"></i>
                         </div>
                         <div style="padding: 1rem;">
-                            <h4 style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem;">Banner_Promo_V1.png</h4>
+                            <h4 style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem;">
+                                Banner_Promo_V1.png</h4>
                             <p style="font-size: 0.75rem; color: var(--text-secondary);">TechCorp Inc • 2.4 MB</p>
                         </div>
                     </div>
                     <!-- Asset Card -->
-                    <div style="background: var(--bg-panel); border-radius: 0.75rem; overflow: hidden; border: 1px solid var(--border-color);">
-                        <div style="height: 120px; background: linear-gradient(45deg, #1e293b, #334155); display: flex; align-items: center; justify-content: center;">
+                    <div
+                        style="background: var(--bg-panel); border-radius: 0.75rem; overflow: hidden; border: 1px solid var(--border-color);">
+                        <div
+                            style="height: 120px; background: linear-gradient(45deg, #1e293b, #334155); display: flex; align-items: center; justify-content: center;">
                             <i class="fa-solid fa-file-lines text-2xl" style="color: var(--text-secondary)"></i>
                         </div>
                         <div style="padding: 1rem;">
-                            <h4 style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem;">Copy_Meta_Ads.docx</h4>
+                            <h4 style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem;">
+                                Copy_Meta_Ads.docx</h4>
                             <p style="font-size: 0.75rem; color: var(--text-secondary);">Innova Solutions • 15 KB</p>
                         </div>
                     </div>
@@ -237,8 +291,8 @@
                 <div class="flex justify-between items-center mb-4">
                     <h1 class="text-2xl">Dispersiones Totales</h1>
                     <div class="flex gap-2">
-                        <button class="btn btn-outline"><i class="fa-solid fa-file-export"></i> Exportar</button>
-                        <button class="btn" onclick="openNewDispersionPanel()"><i class="fa-solid fa-plus"></i> Nueva Dispersión</button>
+                        <button class="btn" onclick="openNewDispersionPanel()"><i class="fa-solid fa-plus"></i> Nueva
+                            Dispersión</button>
                     </div>
                 </div>
                 <!-- Closer Summary Cards -->
@@ -288,9 +342,10 @@
                     <option value="EN PROCESO">EN PROCESO</option>
                     <option value="NO ASISTIO">NO ASISTIO</option>
                 </select>
-                <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;"><i class="fa-brands fa-slack"></i> Un cambio de estado notificará vía Slack.</p>
+                <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;"><i
+                        class="fa-brands fa-slack"></i> Un cambio de estado notificará vía Slack.</p>
             </div>
-            
+
             <div class="form-group">
                 <label>Sucursal</label>
                 <select class="form-control" id="panelLeadSucursal">
@@ -325,7 +380,8 @@
             <hr style="border: none; border-top: 1px solid var(--border-color); margin: 2rem 0;">
 
             <h3 class="text-xl mb-3">Activos Vinculados</h3>
-            <div style="background: var(--bg-dark); padding: 1rem; border-radius: 0.5rem; border: 1px dashed var(--border-color); text-align: center; color: var(--text-secondary); cursor: pointer;">
+            <div
+                style="background: var(--bg-dark); padding: 1rem; border-radius: 0.5rem; border: 1px dashed var(--border-color); text-align: center; color: var(--text-secondary); cursor: pointer;">
                 <i class="fa-solid fa-cloud-arrow-up mb-2 text-xl"></i>
                 <p style="font-size: 0.875rem;">Arrastra archivos aquí para vincular</p>
             </div>
@@ -333,7 +389,8 @@
             <div style="margin-top: 2rem; display: flex; gap: 1rem;">
                 <button class="btn" style="flex: 2;" onclick="saveLead()">Guardar Cambios</button>
                 <button class="btn btn-outline" style="flex: 1;" onclick="closeLeadPanel()">Cancelar</button>
-                <button class="btn" style="flex: 1; background: var(--danger); border-color: var(--danger);" id="btnDeleteLead" onclick="deleteCurrentLead()">Eliminar</button>
+                <button class="btn" style="flex: 1; background: var(--danger); border-color: var(--danger);"
+                    id="btnDeleteLead" onclick="deleteCurrentLead()">Eliminar</button>
             </div>
         </div>
     </div>
@@ -426,19 +483,28 @@
 
             <div style="margin-top: 2rem; display: flex; gap: 1rem;">
                 <button class="btn" style="flex: 1;" onclick="saveTask()">Guardar Tarea</button>
-                <button class="btn btn-outline" style="flex: 1; border-color: var(--danger); color: var(--danger); display: none;" id="btnDeleteTask" onclick="deleteCurrentTask()">Eliminar</button>
+                <button class="btn btn-outline"
+                    style="flex: 1; border-color: var(--danger); color: var(--danger); display: none;"
+                    id="btnDeleteTask" onclick="deleteCurrentTask()">Eliminar</button>
                 <button class="btn btn-outline" style="flex: 1;" onclick="closeTaskPanel()">Cancelar</button>
             </div>
         </div>
     </div>
 
     <!-- Media Viewer Modal -->
-    <div id="mediaViewerModal" style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 9999; display: none; align-items: center; justify-content: center; flex-direction: column; opacity: 0; transition: opacity 0.3s ease; backdrop-filter: blur(5px);">
-        <button onclick="closeMediaViewer()" style="position: absolute; top: 2rem; right: 2rem; background: rgba(255,255,255,0.1); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.25rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'"><i class="fa-solid fa-xmark"></i></button>
-        <div id="mediaViewerContent" style="max-width: 90vw; max-height: 80vh; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;"></div>
+    <div id="mediaViewerModal"
+        style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 9999; display: none; align-items: center; justify-content: center; flex-direction: column; opacity: 0; transition: opacity 0.3s ease; backdrop-filter: blur(5px);">
+        <button onclick="closeMediaViewer()"
+            style="position: absolute; top: 2rem; right: 2rem; background: rgba(255,255,255,0.1); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.25rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.2)'"
+            onmouseout="this.style.background='rgba(255,255,255,0.1)'"><i class="fa-solid fa-xmark"></i></button>
+        <div id="mediaViewerContent"
+            style="max-width: 90vw; max-height: 80vh; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
+        </div>
         <h3 id="mediaViewerTitle" style="color: white; margin-top: 1rem; font-weight: 500; font-size: 1.25rem;"></h3>
     </div>
 
     <script src="app.js"></script>
 </body>
+
 </html>

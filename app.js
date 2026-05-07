@@ -1030,3 +1030,143 @@ function logout() {
     document.getElementById('loginPass').value = '';
     triggerNotification('Sesión Cerrada', 'Has salido del sistema.', 'warning');
 }
+
+// ==========================================
+// Google Sheets Auto-Sync (Every 5 Hours)
+// ==========================================
+const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxfYXyFyocpJQcphMTRy9SKtSyhuM05xHaSVJWyqpN94IP5JC8HT5SKlU2wSMUyiUc/exec';
+const SYNC_INTERVAL_MS = 5 * 60 * 60 * 1000; // 5 hours in milliseconds
+let syncIntervalId = null;
+let nextSyncTime = null;
+let syncCountdownId = null;
+
+async function syncLeadsToSheets(isManual = false) {
+    const syncBtn = document.getElementById('btnSyncSheets');
+    const syncStatus = document.getElementById('syncStatusText');
+    
+    // Visual feedback - syncing state
+    if (syncBtn) {
+        syncBtn.disabled = true;
+        syncBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sincronizando...';
+    }
+    if (syncStatus) syncStatus.innerText = 'Sincronizando...';
+
+    try {
+        // Fetch all leads from Supabase
+        const { data, error } = await supabaseClient
+            .from('leads')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Format data for Google Sheets
+        const payload = data.map(lead => ({
+            fecha: new Date(lead.created_at).toLocaleDateString('en-GB'),
+            sucursal: lead.sucursal || '',
+            nombre: lead.nombre || '',
+            vehiculo: lead.vehiculo || '',
+            etapa: lead.etapa || '',
+            numero: lead.numero || '',
+            agente: lead.creado_por || '',
+            observaciones: lead.observaciones || ''
+        }));
+
+        // Send to Google Sheets Web App
+        const response = await fetch(SHEETS_WEBAPP_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ leads: payload })
+        });
+
+        // With no-cors, we can't read the response, but if no error was thrown, assume success
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+        
+        localStorage.setItem('crm-last-sync', now.toISOString());
+        
+        if (syncStatus) syncStatus.innerText = `Última sync: ${timeStr}`;
+        
+        triggerNotification(
+            'Google Sheets Actualizado',
+            `${payload.length} leads sincronizados exitosamente a las ${timeStr}`,
+            'success'
+        );
+
+        console.log(`[Sheets Sync] ${payload.length} leads enviados a las ${timeStr}`);
+        
+        // Reset next sync countdown
+        scheduleNextSync();
+
+    } catch (err) {
+        console.error('[Sheets Sync] Error:', err);
+        if (syncStatus) syncStatus.innerText = 'Error en sync';
+        triggerNotification(
+            'Error de Sincronización',
+            'No se pudieron enviar los datos a Google Sheets. Se reintentará.',
+            'warning'
+        );
+    } finally {
+        // Restore button
+        if (syncBtn) {
+            syncBtn.disabled = false;
+            syncBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Sync Sheets';
+        }
+    }
+}
+
+function scheduleNextSync() {
+    // Clear existing interval/countdown
+    if (syncIntervalId) clearTimeout(syncIntervalId);
+    if (syncCountdownId) clearInterval(syncCountdownId);
+    
+    nextSyncTime = Date.now() + SYNC_INTERVAL_MS;
+    
+    // Schedule next sync
+    syncIntervalId = setTimeout(() => {
+        syncLeadsToSheets(false);
+    }, SYNC_INTERVAL_MS);
+    
+    // Update countdown every minute
+    syncCountdownId = setInterval(() => {
+        updateSyncCountdown();
+    }, 60000);
+    
+    updateSyncCountdown();
+}
+
+function updateSyncCountdown() {
+    const countdownEl = document.getElementById('syncCountdown');
+    if (!countdownEl || !nextSyncTime) return;
+    
+    const remaining = nextSyncTime - Date.now();
+    if (remaining <= 0) {
+        countdownEl.innerText = 'Sincronizando pronto...';
+        return;
+    }
+    
+    const hours = Math.floor(remaining / (1000 * 60 * 60));
+    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+    
+    countdownEl.innerText = `Próxima sync: ${hours}h ${minutes}m`;
+}
+
+// Initialize sync system on DOM load
+document.addEventListener('DOMContentLoaded', () => {
+    // Check if there was a previous sync
+    const lastSync = localStorage.getItem('crm-last-sync');
+    const syncStatus = document.getElementById('syncStatusText');
+    
+    if (lastSync && syncStatus) {
+        const lastDate = new Date(lastSync);
+        syncStatus.innerText = `Última sync: ${lastDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    
+    // Start the auto-sync cycle
+    scheduleNextSync();
+    
+    console.log('[Sheets Sync] Auto-sync iniciado — cada 5 horas');
+});
