@@ -642,18 +642,24 @@ function updateCloserSummary() {
     
     const rows = tbody.querySelectorAll('tr');
     const closerTotals = {};
+    const branchTotals = {};
     let totalGeneral = 0;
-
+    
     rows.forEach(row => {
         if (row.style.display === 'none') return;
         const cells = row.querySelectorAll('td');
         if (cells.length >= 6) {
+            let branch = cells[1].innerText.trim() || 'Desconocida';
             let montoText = cells[3].innerText.replace(/[\$,]/g, '');
             let monto = parseFloat(montoText) || 0;
             let closer = cells[5].innerText.trim() || 'Sin Asignar';
-
+    
             if (!closerTotals[closer]) closerTotals[closer] = 0;
             closerTotals[closer] += monto;
+            
+            if (!branchTotals[branch]) branchTotals[branch] = 0;
+            branchTotals[branch] += monto;
+            
             totalGeneral += monto;
         }
     });
@@ -681,8 +687,8 @@ function updateCloserSummary() {
         `;
     }
 
-    // Update the Dispersions Chart
-    updateDispersionesChart(closerTotals);
+    // Update the Dispersions Chart (by Branch)
+    updateDispersionesChart(branchTotals);
 }
 
 function updateDispersionesChart(totalsMap) {
