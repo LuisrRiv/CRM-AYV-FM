@@ -1032,24 +1032,16 @@ function logout() {
 }
 
 // ==========================================
-// Google Sheets Auto-Sync (Every 5 Hours)
+// Excel Export (Reporte de Citas)
 // ==========================================
-const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzllcavKdir2HhAG43pjOKprPUZDqb4KSZUPJf8DRtXmH0z3xb8g0mBU0zwBGd-6j4/exec';
-const SYNC_INTERVAL_MS = 5 * 60 * 60 * 1000; // 5 hours in milliseconds
-let syncIntervalId = null;
-let nextSyncTime = null;
-let syncCountdownId = null;
-
-async function syncLeadsToSheets(isManual = false) {
-    const syncBtn = document.getElementById('btnSyncSheets');
-    const syncStatus = document.getElementById('syncStatusText');
+async function exportLeadsToExcel() {
+    const btn = document.getElementById('btnExportExcel');
     
-    // Visual feedback - syncing state
-    if (syncBtn) {
-        syncBtn.disabled = true;
-        syncBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sincronizando...';
+    // Visual feedback
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generando...';
     }
-    if (syncStatus) syncStatus.innerText = 'Sincronizando...';
 
     try {
         // Fetch all leads from Supabase
@@ -1060,113 +1052,61 @@ async function syncLeadsToSheets(isManual = false) {
 
         if (error) throw error;
 
-        // Format data for Google Sheets
-        const payload = data.map(lead => ({
-            fecha: new Date(lead.created_at).toLocaleDateString('en-GB'),
-            sucursal: lead.sucursal || '',
-            nombre: lead.nombre || '',
-            vehiculo: lead.vehiculo || '',
-            etapa: lead.etapa || '',
-            numero: lead.numero || '',
-            agente: lead.creado_por || '',
-            observaciones: lead.observaciones || ''
+        // Format data for Excel
+        const rows = data.map(lead => ({
+            'FECHA': new Date(lead.created_at).toLocaleDateString('en-GB'),
+            'SUCURSAL': lead.sucursal || '',
+            'NOMBRE': lead.nombre || '',
+            'VEHÍCULO': lead.vehiculo || '',
+            'ETAPA': lead.etapa || '',
+            'NÚMERO': lead.numero || '',
+            'AGENTE': lead.creado_por || '',
+            'OBSERVACIONES': lead.observaciones || ''
         }));
 
-        // Send to Google Sheets Web App
-        const response = await fetch(SHEETS_WEBAPP_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: {
-                'Content-Type': 'text/plain'
-            },
-            body: JSON.stringify({ leads: payload })
-        });
+        // Create workbook and worksheet
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(rows);
 
-        // With no-cors, we can't read the response, but if no error was thrown, assume success
+        // Set column widths
+        ws['!cols'] = [
+            { wch: 12 },  // FECHA
+            { wch: 22 },  // SUCURSAL
+            { wch: 25 },  // NOMBRE
+            { wch: 20 },  // VEHÍCULO
+            { wch: 15 },  // ETAPA
+            { wch: 15 },  // NÚMERO
+            { wch: 18 },  // AGENTE
+            { wch: 35 }   // OBSERVACIONES
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, 'Reporte de Citas');
+
+        // Generate filename with current date
         const now = new Date();
-        const timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-        
-        localStorage.setItem('crm-last-sync', now.toISOString());
-        
-        if (syncStatus) syncStatus.innerText = `Última sync: ${timeStr}`;
-        
+        const dateStr = now.toLocaleDateString('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
+        const fileName = `Reporte_Citas_${dateStr}.xlsx`;
+
+        // Download
+        XLSX.writeFile(wb, fileName);
+
         triggerNotification(
-            'Google Sheets Actualizado',
-            `${payload.length} leads sincronizados exitosamente a las ${timeStr}`,
+            'Excel Descargado',
+            `${rows.length} leads exportados en "${fileName}"`,
             'success'
         );
 
-        console.log(`[Sheets Sync] ${payload.length} leads enviados a las ${timeStr}`);
-        
-        // Reset next sync countdown
-        scheduleNextSync();
-
     } catch (err) {
-        console.error('[Sheets Sync] Error:', err);
-        if (syncStatus) syncStatus.innerText = 'Error en sync';
+        console.error('[Excel Export] Error:', err);
         triggerNotification(
-            'Error de Sincronización',
-            'No se pudieron enviar los datos a Google Sheets. Se reintentará.',
+            'Error de Exportación',
+            'No se pudo generar el archivo Excel.',
             'warning'
         );
     } finally {
-        // Restore button
-        if (syncBtn) {
-            syncBtn.disabled = false;
-            syncBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Sync Sheets';
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-file-excel"></i> Exportar Excel';
         }
     }
 }
-
-function scheduleNextSync() {
-    // Clear existing interval/countdown
-    if (syncIntervalId) clearTimeout(syncIntervalId);
-    if (syncCountdownId) clearInterval(syncCountdownId);
-    
-    nextSyncTime = Date.now() + SYNC_INTERVAL_MS;
-    
-    // Schedule next sync
-    syncIntervalId = setTimeout(() => {
-        syncLeadsToSheets(false);
-    }, SYNC_INTERVAL_MS);
-    
-    // Update countdown every minute
-    syncCountdownId = setInterval(() => {
-        updateSyncCountdown();
-    }, 60000);
-    
-    updateSyncCountdown();
-}
-
-function updateSyncCountdown() {
-    const countdownEl = document.getElementById('syncCountdown');
-    if (!countdownEl || !nextSyncTime) return;
-    
-    const remaining = nextSyncTime - Date.now();
-    if (remaining <= 0) {
-        countdownEl.innerText = 'Sincronizando pronto...';
-        return;
-    }
-    
-    const hours = Math.floor(remaining / (1000 * 60 * 60));
-    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-    
-    countdownEl.innerText = `Próxima sync: ${hours}h ${minutes}m`;
-}
-
-// Initialize sync system on DOM load
-document.addEventListener('DOMContentLoaded', () => {
-    // Check if there was a previous sync
-    const lastSync = localStorage.getItem('crm-last-sync');
-    const syncStatus = document.getElementById('syncStatusText');
-    
-    if (lastSync && syncStatus) {
-        const lastDate = new Date(lastSync);
-        syncStatus.innerText = `Última sync: ${lastDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`;
-    }
-    
-    // Start the auto-sync cycle
-    scheduleNextSync();
-    
-    console.log('[Sheets Sync] Auto-sync iniciado — cada 5 horas');
-});

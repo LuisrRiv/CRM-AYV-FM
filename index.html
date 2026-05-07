@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 
 <body>
@@ -157,17 +158,12 @@
                 <div class="flex justify-between items-center mb-4">
                     <h1 class="text-2xl">Reporte de Citas</h1>
                     <div class="flex gap-2 items-center">
-                        <!-- Sync Status Indicators -->
-                        <div style="display: flex; flex-direction: column; align-items: flex-end; margin-right: 0.5rem;">
-                            <span id="syncStatusText" style="font-size: 0.7rem; color: var(--text-secondary); white-space: nowrap;">Sin sincronizar</span>
-                            <span id="syncCountdown" style="font-size: 0.65rem; color: var(--accent-primary); white-space: nowrap; margin-top: 2px;">Próxima sync: 5h 0m</span>
-                        </div>
-                        <!-- Manual Sync Button -->
-                        <button class="btn btn-outline" id="btnSyncSheets" onclick="syncLeadsToSheets(true)" title="Sincronizar datos con Google Sheets"
-                            style="display: flex; align-items: center; gap: 0.5rem; border-color: #34a853; color: #34a853; font-size: 0.85rem; padding: 0.5rem 1rem; transition: all 0.2s;"
-                            onmouseover="this.style.background='#34a853'; this.style.color='white';"
-                            onmouseout="this.style.background='transparent'; this.style.color='#34a853';">
-                            <i class="fa-solid fa-cloud-arrow-up"></i> Sync Sheets
+                        <!-- Export Excel Button -->
+                        <button class="btn btn-outline" id="btnExportExcel" onclick="exportLeadsToExcel()" title="Descargar Reporte de Citas como Excel"
+                            style="display: flex; align-items: center; gap: 0.5rem; border-color: #1d6f42; color: #1d6f42; font-size: 0.85rem; padding: 0.5rem 1rem; transition: all 0.2s;"
+                            onmouseover="this.style.background='#1d6f42'; this.style.color='white';"
+                            onmouseout="this.style.background='transparent'; this.style.color='#1d6f42';">
+                            <i class="fa-solid fa-file-excel"></i> Exportar Excel
                         </button>
                         <button class="btn" onclick="openNewLeadPanel()"><i class="fa-solid fa-plus"></i> Nuevo
                             Lead</button>
