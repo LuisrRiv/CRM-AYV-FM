@@ -1034,7 +1034,7 @@ function logout() {
 // ==========================================
 // Google Sheets Auto-Sync (Every 5 Hours)
 // ==========================================
-const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxfYXyFyocpJQcphMTRy9SKtSyhuM05xHaSVJWyqpN94IP5JC8HT5SKlU2wSMUyiUc/exec';
+const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzllcavKdir2HhAG43pjOKprPUZDqb4KSZUPJf8DRtXmH0z3xb8g0mBU0zwBGd-6j4/exec';
 const SYNC_INTERVAL_MS = 5 * 60 * 60 * 1000; // 5 hours in milliseconds
 let syncIntervalId = null;
 let nextSyncTime = null;
