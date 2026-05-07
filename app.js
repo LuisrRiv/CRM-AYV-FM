@@ -680,12 +680,27 @@ function updateCloserSummary() {
             </div>
         `;
     }
+
+    // Update the Dispersions Chart
+    updateDispersionesChart(closerTotals);
+}
+
+function updateDispersionesChart(totalsMap) {
+    if (!dispersionesChartInstance) return;
+
+    const labels = Object.keys(totalsMap);
+    const data = Object.values(totalsMap);
+
+    dispersionesChartInstance.data.labels = labels;
+    dispersionesChartInstance.data.datasets[0].data = data;
+    dispersionesChartInstance.update();
 }
 
 // ==========================================
 // Chart.js Initialization (Graphical Section)
 let branchChartInstance = null;
 let statusChartInstance = null;
+let dispersionesChartInstance = null;
 
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
@@ -751,6 +766,50 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     updateDashboardCharts();
+
+    // Dispersions Chart (Bar) - Performance per Closer
+    const ctxDisp = document.getElementById('dispersionesChart');
+    if (ctxDisp) {
+        dispersionesChartInstance = new Chart(ctxDisp, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Monto Total ($)',
+                    data: [],
+                    backgroundColor: '#22c55e',
+                    borderRadius: 4,
+                    barThickness: 30
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `Total: $${context.raw.toLocaleString('en-US')}`
+                        }
+                    }
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: 'rgba(128,128,128,0.1)' },
+                        ticks: { 
+                            color: '#64748b',
+                            callback: (value) => '$' + value.toLocaleString()
+                        }
+                    },
+                    x: { 
+                        grid: { display: false },
+                        ticks: { color: '#64748b' }
+                    }
+                }
+            }
+        });
+    }
 });
 
 function updateDashboardCharts() {

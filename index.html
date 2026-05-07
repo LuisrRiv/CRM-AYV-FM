@@ -295,6 +295,16 @@
                 <div class="flex gap-4 mb-4" id="closerSummaryCards" style="flex-wrap: wrap;">
                     <!-- Inserted via JS -->
                 </div>
+
+                <!-- Dispersions Chart Container -->
+                <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; margin-bottom: 2rem; height: 350px; border: 1px solid var(--border-color);">
+                    <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1.5rem; display: flex; align-items: center;">
+                        <i class="fa-solid fa-chart-column" style="margin-right: 0.5rem; color: var(--success);"></i> Rendimiento por Closer (Monto Total)
+                    </h3>
+                    <div style="height: calc(100% - 40px);">
+                        <canvas id="dispersionesChart"></canvas>
+                    </div>
+                </div>
                 <table class="data-table">
                     <thead>
                         <tr>
