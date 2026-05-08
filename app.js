@@ -474,6 +474,7 @@ function openNewDispersionPanel() {
     document.getElementById('dispCalificador').value = "";
     document.getElementById('dispCloser').value = "";
     document.getElementById('dispObs').value = "";
+    document.getElementById('dispObsEncargado').value = "";
     
     document.getElementById('dispersionPanel').classList.add('open');
 }
@@ -525,6 +526,7 @@ async function fetchDispersiones() {
             <td>${disp.calificador || ''}</td>
             <td>${disp.closer || ''}</td>
             <td>${disp.observaciones || ''}</td>
+            <td style="color: var(--accent-primary); font-weight: 500;">${disp.obs_encargado || ''}</td>
             <td><button onclick="event.stopPropagation(); deleteRow(this, 'Dispersión', '${disp.id}')" style="color: var(--danger); background: none; border: none; cursor: pointer;"><i class="fa-solid fa-trash"></i></button></td>
         `;
         tbody.appendChild(tr);
@@ -554,7 +556,8 @@ async function saveDispersion() {
         monto: parseFloat(monto.replace(/[\$,]/g, '')) || 0,
         calificador: calificador,
         closer: closer,
-        observaciones: obs
+        observaciones: obs,
+        obs_encargado: document.getElementById('dispObsEncargado').value
     };
 
     const { error } = await supabaseClient.from('dispersiones').insert([dispData]);
