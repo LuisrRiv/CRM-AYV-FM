@@ -109,7 +109,7 @@ async function fetchLeads() {
             <td>${lead.numero || ''}</td>
             <td><span style="font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); background: var(--bg-dark); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">${lead.creado_por || '-'}</span></td>
             <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${shortObs}</td>
-            <td style="color: var(--accent-primary); font-weight: 500;">${lead.obs_encargado || ''}</td>
+            <td style="color: #6366f1; font-weight: 500; font-style: italic;">${lead.obs_encargado || ''}</td>
         `;
         tbody.appendChild(tr);
     });
