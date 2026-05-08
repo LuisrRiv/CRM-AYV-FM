@@ -691,14 +691,34 @@ function updateCloserSummary() {
     updateDispersionesChart(branchTotals);
 }
 
+// Function to update the Dispersions Chart (by Branch) with specific colors
 function updateDispersionesChart(totalsMap) {
     if (!dispersionesChartInstance) return;
 
     const labels = Object.keys(totalsMap);
     const data = Object.values(totalsMap);
 
+    // Color palette for branches
+    const branchColors = {
+        'XALAPA 20 NOV': '#6366f1',
+        'XALAPA ARAUCARIAS': '#8b5cf6',
+        'VERACRUZ': '#22c55e',
+        'ZAPOPAN': '#eab308',
+        'MONTERREY CENTRO': '#3b82f6',
+        'MONTERREY TERRANOVA': '#0ea5e9',
+        'MONTERREY MOVIL': '#06b6d4',
+        'PUEBLA ANZURES': '#f97316',
+        'PUEBLA CHOLULA': '#fb923c',
+        'QUERETARO': '#ec4899',
+        'QUERETARO MOVIL': '#f43f5e',
+        'GUADALAJARA MOVIL': '#10b981'
+    };
+
+    const backgroundColors = labels.map(label => branchColors[label] || '#94a3b8');
+
     dispersionesChartInstance.data.labels = labels;
     dispersionesChartInstance.data.datasets[0].data = data;
+    dispersionesChartInstance.data.datasets[0].backgroundColor = backgroundColors;
     dispersionesChartInstance.update();
 }
 
@@ -783,7 +803,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 datasets: [{
                     label: 'Monto Total ($)',
                     data: [],
-                    backgroundColor: '#22c55e',
+                    backgroundColor: [], // Set dynamically in updateDispersionesChart
                     borderRadius: 4,
                     barThickness: 30
                 }]
