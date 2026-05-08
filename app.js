@@ -96,7 +96,8 @@ async function fetchLeads() {
             lead.sucursal || '', 
             lead.vehiculo || '', 
             lead.numero || '', 
-            lead.observaciones || ''
+            lead.observaciones || '',
+            lead.obs_encargado || ''
         );
         
         tr.innerHTML = `
@@ -108,6 +109,7 @@ async function fetchLeads() {
             <td>${lead.numero || ''}</td>
             <td><span style="font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); background: var(--bg-dark); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">${lead.creado_por || '-'}</span></td>
             <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${shortObs}</td>
+            <td style="color: var(--accent-primary); font-weight: 500;">${lead.obs_encargado || ''}</td>
         `;
         tbody.appendChild(tr);
     });
@@ -142,12 +144,13 @@ function openNewLeadPanel() {
     document.getElementById('panelLeadVehiculo').value = "";
     document.getElementById('panelLeadNumero').value = "";
     document.getElementById('panelLeadObs').value = "";
+    document.getElementById('panelLeadObsEncargado').value = "";
     const btnDel = document.getElementById('btnDeleteLead');
     if(btnDel) btnDel.style.display = 'none';
     document.getElementById('leadPanel').classList.add('open');
 }
 
-function openLeadPanel(id, name, stage, sucursal, vehiculo, numero, obs) {
+function openLeadPanel(id, name, stage, sucursal, vehiculo, numero, obs, obsEncargado) {
     currentLeadId = id;
     document.getElementById('panelTitle').innerText = "Detalles del Lead";
     document.getElementById('panelLeadNameInput').value = name;
@@ -156,6 +159,7 @@ function openLeadPanel(id, name, stage, sucursal, vehiculo, numero, obs) {
     document.getElementById('panelLeadVehiculo').value = vehiculo;
     document.getElementById('panelLeadNumero').value = numero;
     document.getElementById('panelLeadObs').value = obs;
+    document.getElementById('panelLeadObsEncargado').value = obsEncargado || "";
     const btnDel = document.getElementById('btnDeleteLead');
     if(btnDel) btnDel.style.display = 'block';
     document.getElementById('leadPanel').classList.add('open');
@@ -187,6 +191,7 @@ async function saveLead() {
         vehiculo: vehiculo,
         numero: numero,
         observaciones: obs,
+        obs_encargado: document.getElementById('panelLeadObsEncargado').value,
         creado_por: currentUser
     };
 
@@ -474,7 +479,6 @@ function openNewDispersionPanel() {
     document.getElementById('dispCalificador').value = "";
     document.getElementById('dispCloser').value = "";
     document.getElementById('dispObs').value = "";
-    document.getElementById('dispObsEncargado').value = "";
     
     document.getElementById('dispersionPanel').classList.add('open');
 }
@@ -526,7 +530,6 @@ async function fetchDispersiones() {
             <td>${disp.calificador || ''}</td>
             <td>${disp.closer || ''}</td>
             <td>${disp.observaciones || ''}</td>
-            <td style="color: var(--accent-primary); font-weight: 500;">${disp.obs_encargado || ''}</td>
             <td><button onclick="event.stopPropagation(); deleteRow(this, 'Dispersión', '${disp.id}')" style="color: var(--danger); background: none; border: none; cursor: pointer;"><i class="fa-solid fa-trash"></i></button></td>
         `;
         tbody.appendChild(tr);
@@ -556,8 +559,7 @@ async function saveDispersion() {
         monto: parseFloat(monto.replace(/[\$,]/g, '')) || 0,
         calificador: calificador,
         closer: closer,
-        observaciones: obs,
-        obs_encargado: document.getElementById('dispObsEncargado').value
+        observaciones: obs
     };
 
     const { error } = await supabaseClient.from('dispersiones').insert([dispData]);
