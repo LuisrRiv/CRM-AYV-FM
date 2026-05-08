@@ -165,6 +165,18 @@
                             onmouseout="this.style.background='transparent'; this.style.color='#1d6f42';">
                             <i class="fa-solid fa-file-excel"></i> Exportar Excel
                         </button>
+                        <!-- Agent Filter -->
+                        <div class="flex items-center gap-2" style="background: var(--bg-panel); padding: 0.25rem 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                            <i class="fa-solid fa-filter" style="color: var(--text-secondary); font-size: 0.8rem;"></i>
+                            <select id="agentFilter" onchange="applyGlobalFilter()" 
+                                style="background: transparent; border: none; color: var(--text-primary); font-size: 0.85rem; outline: none; cursor: pointer; padding: 0.25rem;">
+                                <option value="all">Todos los Agentes</option>
+                                <option value="adminlr">adminlr</option>
+                                <option value="franco lozada">franco lozada</option>
+                                <option value="fabiola mendoza">fabiola mendoza</option>
+                                <option value="fatima morales">fatima morales</option>
+                            </select>
+                        </div>
                         <button class="btn" onclick="openNewLeadPanel()"><i class="fa-solid fa-plus"></i> Nuevo
                             Lead</button>
                     </div>

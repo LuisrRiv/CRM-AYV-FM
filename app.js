@@ -626,13 +626,20 @@ function applyGlobalFilter() {
 
     // Filter Leads
     const leadsTbody = document.querySelector('#leads .data-table tbody');
+    const agentFilter = document.getElementById('agentFilter') ? document.getElementById('agentFilter').value : 'all';
+
     if (leadsTbody) {
         const rows = leadsTbody.querySelectorAll('tr');
         rows.forEach(row => {
             const cells = row.querySelectorAll('td');
-            if (cells.length > 0) {
+            if (cells.length > 6) {
                 const dateStr = cells[0].innerText.trim();
-                row.style.display = matchesFilter(dateStr) ? '' : 'none';
+                const agentStr = cells[6].innerText.trim().toLowerCase();
+                
+                const matchesDate = matchesFilter(dateStr);
+                const matchesAgent = (agentFilter === 'all' || agentStr === agentFilter.toLowerCase());
+                
+                row.style.display = (matchesDate && matchesAgent) ? '' : 'none';
             }
         });
     }
