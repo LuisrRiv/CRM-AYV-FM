@@ -392,8 +392,17 @@
                     </div>
                 </div>
                 
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; overflow-x: auto; padding-bottom: 0.5rem;" id="reportTabs">
+                    <button class="tab-btn active" onclick="setReportPeriod('W1')">Semana 1 Mayo</button>
+                    <button class="tab-btn" onclick="setReportPeriod('W2')">Semana 2 Mayo</button>
+                    <button class="tab-btn" onclick="setReportPeriod('W3')">Semana 3 Mayo</button>
+                    <button class="tab-btn" onclick="setReportPeriod('W4')">Semana 4 Mayo</button>
+                    <button class="tab-btn" onclick="setReportPeriod('W5')">Semana 5 Mayo</button>
+                    <button class="tab-btn" onclick="setReportPeriod('MONTH')">RESUMEN MENSUAL</button>
+                </div>
+
                 <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 1rem; border: 1px solid var(--border-color); margin-bottom: 2rem;">
-                    <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-secondary);">Entrada de Datos Manuales</h3>
+                    <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-secondary);" id="manualEntryTitle">Entrada de Datos Manuales - Semana 1</h3>
                     <table class="data-table" id="manualEntryTable">
                         <thead>
                             <tr>

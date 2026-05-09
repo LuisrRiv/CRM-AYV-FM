@@ -217,6 +217,32 @@ const zoneMapping = {
 };
 
 let manualOverrides = [];
+let currentReportPeriod = 'W1'; // W1, W2, W3, W4, W5, MONTH
+
+const monthWeekRanges = {
+    'W1': { start: '2026-05-01', end: '2026-05-07' },
+    'W2': { start: '2026-05-08', end: '2026-05-14' },
+    'W3': { start: '2026-05-15', end: '2026-05-21' },
+    'W4': { start: '2026-05-22', end: '2026-05-28' },
+    'W5': { start: '2026-05-29', end: '2026-05-31' },
+    'MONTH': { start: '2026-05-01', end: '2026-05-31' }
+};
+
+async function setReportPeriod(period) {
+    currentReportPeriod = period;
+    
+    // Update UI
+    document.querySelectorAll('#reportTabs .tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('onclick').includes(`'${period}'`));
+    });
+    
+    const title = document.getElementById('manualEntryTitle');
+    if (title) {
+        title.innerText = period === 'MONTH' ? 'Resumen Consolidado de Mayo' : `Entrada de Datos Manuales - Semana ${period.replace('W', '')}`;
+    }
+
+    generateReport();
+}
 
 async function fetchManualReportData() {
     const { data, error } = await supabaseClient.from('reporte_datos').select('*');
@@ -228,8 +254,20 @@ async function fetchManualReportData() {
 }
 
 async function generateReport() {
-    const { data: leads, error: lError } = await supabaseClient.from('leads').select('*');
-    const { data: dispersiones, error: dError } = await supabaseClient.from('dispersiones').select('*');
+    const range = monthWeekRanges[currentReportPeriod];
+    
+    // Fetch data filtered by date
+    const { data: leads, error: lError } = await supabaseClient
+        .from('leads')
+        .select('*')
+        .gte('created_at', range.start + 'T00:00:00')
+        .lte('created_at', range.end + 'T23:59:59');
+
+    const { data: dispersiones, error: dError } = await supabaseClient
+        .from('dispersiones')
+        .select('*')
+        .gte('created_at', range.start + 'T00:00:00')
+        .lte('created_at', range.end + 'T23:59:59');
 
     if (lError || dError) {
         console.error('Error fetching report data:', lError || dError);
@@ -240,29 +278,45 @@ async function generateReport() {
 
     const reportData = {};
     Object.keys(zoneMapping).forEach(zone => {
-        const getVal = (campo) => {
-            const match = manualOverrides.find(o => o.zona === zone && o.campo === campo);
-            return match ? match.valor : null;
-        };
+        if (currentReportPeriod === 'MONTH') {
+            reportData[zone] = { leads: 0, viables: 0, citas: 0, dispersado: 0, disp_count: 0, presupuesto: 0, atendidas: 0 };
+            ['W1', 'W2', 'W3', 'W4', 'W5'].forEach(w => {
+                const getWVal = (campo) => manualOverrides.find(o => o.zona === zone && o.campo === campo && o.periodo === w)?.valor || 0;
+                reportData[zone].presupuesto += getWVal('budget');
+                reportData[zone].atendidas += getWVal('atendidas');
+                reportData[zone].leads += getWVal('leads');
+                reportData[zone].viables += getWVal('viables');
+                reportData[zone].citas += getWVal('citas');
+                reportData[zone].disp_count += getWVal('disp_count');
+                reportData[zone].dispersado += getWVal('dispersado');
+            });
+        } else {
+            const getVal = (campo) => {
+                const match = manualOverrides.find(o => o.zona === zone && o.campo === campo && o.periodo === currentReportPeriod);
+                return match ? match.valor : null;
+            };
 
-        reportData[zone] = {
-            leads: getVal('leads') ?? 0,
-            viables: getVal('viables') ?? 0,
-            citas: getVal('citas') ?? 0,
-            dispersado: getVal('dispersado') ?? 0,
-            disp_count: getVal('disp_count') ?? 0,
-            presupuesto: getVal('budget') ?? 0,
-            atendidas: getVal('atendidas') ?? 0
-        };
+            reportData[zone] = {
+                leads: getVal('leads') ?? 0,
+                viables: getVal('viables') ?? 0,
+                citas: getVal('citas') ?? 0,
+                dispersado: getVal('dispersado') ?? 0,
+                disp_count: getVal('disp_count') ?? 0,
+                presupuesto: getVal('budget') ?? 0,
+                atendidas: getVal('atendidas') ?? 0
+            };
+        }
     });
 
-    // Aggregate Defaults if not manual
+    // Aggregate Real Data Defaults
     leads.forEach(lead => {
         for (const [zone, branches] of Object.entries(zoneMapping)) {
             if (branches.includes(lead.sucursal)) {
-                if (!manualOverrides.find(o => o.zona === zone && o.campo === 'leads')) reportData[zone].leads++;
-                if (!manualOverrides.find(o => o.zona === zone && o.campo === 'viables') && ['DISPERSADO', 'EN PROCESO', 'CITA'].includes(lead.etapa)) reportData[zone].viables++;
-                if (!manualOverrides.find(o => o.zona === zone && o.campo === 'citas') && lead.etapa === 'CITA') reportData[zone].citas++;
+                if (currentReportPeriod !== 'MONTH') {
+                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'leads' && o.periodo === currentReportPeriod)) reportData[zone].leads++;
+                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'viables' && o.periodo === currentReportPeriod) && ['DISPERSADO', 'EN PROCESO', 'CITA'].includes(lead.etapa)) reportData[zone].viables++;
+                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'citas' && o.periodo === currentReportPeriod) && lead.etapa === 'CITA') reportData[zone].citas++;
+                }
                 break;
             }
         }
@@ -271,11 +325,13 @@ async function generateReport() {
     dispersiones.forEach(disp => {
         for (const [zone, branches] of Object.entries(zoneMapping)) {
             if (branches.includes(disp.sucursal)) {
-                if (!manualOverrides.find(o => o.zona === zone && o.campo === 'dispersado')) {
-                    reportData[zone].dispersado += parseFloat(disp.monto) || 0;
-                }
-                if (!manualOverrides.find(o => o.zona === zone && o.campo === 'disp_count')) {
-                    reportData[zone].disp_count++;
+                if (currentReportPeriod !== 'MONTH') {
+                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'dispersado' && o.periodo === currentReportPeriod)) {
+                        reportData[zone].dispersado += parseFloat(disp.monto) || 0;
+                    }
+                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'disp_count' && o.periodo === currentReportPeriod)) {
+                        reportData[zone].disp_count++;
+                    }
                 }
                 break;
             }
@@ -292,7 +348,7 @@ function renderReportTable(data) {
     tbody.innerHTML = '';
 
     const currentUser = localStorage.getItem('crm-logged-in');
-    const isReadOnly = currentUser === 'invitado';
+    const isReadOnly = currentUser === 'invitado' || currentReportPeriod === 'MONTH';
 
     Object.entries(data).forEach(([zone, stats]) => {
         const tr = document.createElement('tr');
@@ -311,12 +367,14 @@ function renderReportTable(data) {
 }
 
 async function saveManualReportData(zone, type, value) {
+    if (currentReportPeriod === 'MONTH') return;
+
     const campo = type === 'budget' ? 'budget' : type;
     const val = parseFloat(value) || 0;
 
     const { error } = await supabaseClient
         .from('reporte_datos')
-        .upsert({ zona: zone, campo: campo, valor: val }, { onConflict: 'zona,campo' });
+        .upsert({ zona: zone, campo: campo, valor: val, periodo: currentReportPeriod }, { onConflict: 'periodo,zona,campo' });
 
     if (error) {
         console.error('Error saving report data:', error);
