@@ -400,10 +400,10 @@
                                 <th>Zona</th>
                                 <th>Presupuesto ($)</th>
                                 <th>Citas Atendidas</th>
-                                <th>Leads (Auto)</th>
-                                <th>Viables (Auto)</th>
-                                <th>Citas (Auto)</th>
-                                <th>Dispersiones (Auto)</th>
+                                <th>Leads</th>
+                                <th>Viables</th>
+                                <th>Citas</th>
+                                <th>Dispersiones</th>
                             </tr>
                         </thead>
                         <tbody id="reportTableBody">
@@ -412,7 +412,7 @@
                     </table>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
                     <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 1rem; border: 1px solid var(--border-color); height: 350px;">
                         <h3 style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">Eficiencia de Conversión (Leads vs Viables)</h3>
                         <canvas id="conversionChart"></canvas>
@@ -420,6 +420,10 @@
                     <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 1rem; border: 1px solid var(--border-color); height: 350px;">
                         <h3 style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">Presupuesto vs Dispersión</h3>
                         <canvas id="budgetChart"></canvas>
+                    </div>
+                    <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 1rem; border: 1px solid var(--border-color); height: 350px; grid-column: span 1;">
+                        <h3 style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">Embudo de Conversión (Viables > Citas > Dispersiones)</h3>
+                        <canvas id="funnelChart"></canvas>
                     </div>
                 </div>
             </section>

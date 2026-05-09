@@ -204,6 +204,7 @@ function setupChatRealtime() {
 // ==========================================
 let conversionChart = null;
 let budgetChart = null;
+let funnelChart = null;
 
 const zoneMapping = {
     'QUERETARO': ['QUERETARO', 'QUERETARO MOVIL'],
@@ -226,22 +227,23 @@ async function generateReport() {
     const reportData = {};
     Object.keys(zoneMapping).forEach(zone => {
         reportData[zone] = {
-            leads: 0,
-            viables: 0,
-            citas: 0,
+            leads: parseInt(localStorage.getItem(`report-leads-${zone}`)) || 0,
+            viables: parseInt(localStorage.getItem(`report-viables-${zone}`)) || 0,
+            citas: parseInt(localStorage.getItem(`report-citas-${zone}`)) || 0,
             dispersado: 0,
+            disp_count: 0,
             presupuesto: parseFloat(localStorage.getItem(`report-budget-${zone}`)) || 0,
             atendidas: parseInt(localStorage.getItem(`report-atendidas-${zone}`)) || 0
         };
     });
 
-    // Aggregate Leads
+    // Aggregate Leads (as defaults if not manual)
     leads.forEach(lead => {
         for (const [zone, branches] of Object.entries(zoneMapping)) {
             if (branches.includes(lead.sucursal)) {
-                reportData[zone].leads++;
-                if (['DISPERSADO', 'EN PROCESO', 'CITA'].includes(lead.etapa)) reportData[zone].viables++;
-                if (lead.etapa === 'CITA') reportData[zone].citas++;
+                if (!localStorage.getItem(`report-leads-${zone}`)) reportData[zone].leads++;
+                if (!localStorage.getItem(`report-viables-${zone}`) && ['DISPERSADO', 'EN PROCESO', 'CITA'].includes(lead.etapa)) reportData[zone].viables++;
+                if (!localStorage.getItem(`report-citas-${zone}`) && lead.etapa === 'CITA') reportData[zone].citas++;
                 break;
             }
         }
@@ -252,6 +254,18 @@ async function generateReport() {
         for (const [zone, branches] of Object.entries(zoneMapping)) {
             if (branches.includes(disp.sucursal)) {
                 reportData[zone].dispersado += parseFloat(disp.monto) || 0;
+                reportData[zone].disp_count++;
+                break;
+            }
+        }
+    });
+
+    // Aggregate Dispersiones
+    dispersiones.forEach(disp => {
+        for (const [zone, branches] of Object.entries(zoneMapping)) {
+            if (branches.includes(disp.sucursal)) {
+                reportData[zone].dispersado += parseFloat(disp.monto) || 0;
+                reportData[zone].disp_count++;
                 break;
             }
         }
@@ -272,9 +286,9 @@ function renderReportTable(data) {
             <td class="font-medium">${zone}</td>
             <td><input type="number" class="form-control" style="padding: 0.25rem 0.5rem; width: 120px;" value="${stats.presupuesto}" onchange="saveManualReportData('${zone}', 'budget', this.value)"></td>
             <td><input type="number" class="form-control" style="padding: 0.25rem 0.5rem; width: 80px;" value="${stats.atendidas}" onchange="saveManualReportData('${zone}', 'atendidas', this.value)"></td>
-            <td style="text-align: center;">${stats.leads}</td>
-            <td style="text-align: center;">${stats.viables}</td>
-            <td style="text-align: center;">${stats.citas}</td>
+            <td><input type="number" class="form-control" style="padding: 0.25rem 0.5rem; width: 60px; text-align: center;" value="${stats.leads}" onchange="saveManualReportData('${zone}', 'leads', this.value)"></td>
+            <td><input type="number" class="form-control" style="padding: 0.25rem 0.5rem; width: 60px; text-align: center;" value="${stats.viables}" onchange="saveManualReportData('${zone}', 'viables', this.value)"></td>
+            <td><input type="number" class="form-control" style="padding: 0.25rem 0.5rem; width: 60px; text-align: center;" value="${stats.citas}" onchange="saveManualReportData('${zone}', 'citas', this.value)"></td>
             <td class="text-success font-medium" style="text-align: right;">$${stats.dispersado.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
         `;
         tbody.appendChild(tr);
@@ -282,7 +296,7 @@ function renderReportTable(data) {
 }
 
 function saveManualReportData(zone, type, value) {
-    localStorage.setItem(`report-${type === 'budget' ? 'budget' : 'atendidas'}-${zone}`, value);
+    localStorage.setItem(`report-${type}-${zone}`, value);
     generateReport(); // Refresh charts
 }
 
@@ -342,6 +356,57 @@ function updateReportCharts(data) {
                 scales: {
                     y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
                     x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // Funnel Chart
+    const totalViables = Object.values(data).reduce((acc, curr) => acc + curr.viables, 0);
+    const totalCitas = Object.values(data).reduce((acc, curr) => acc + curr.citas, 0);
+    const totalDispersiones = Object.values(data).reduce((acc, curr) => acc + curr.disp_count, 0);
+
+    const ctxFunnel = document.getElementById('funnelChart');
+    if (ctxFunnel) {
+        if (funnelChart) funnelChart.destroy();
+        funnelChart = new Chart(ctxFunnel, {
+            type: 'bar',
+            data: {
+                labels: ['Leads Viables', 'Citas Generadas', 'Dispersiones'],
+                datasets: [{
+                    label: 'Cantidad',
+                    data: [totalViables, totalCitas, totalDispersiones],
+                    backgroundColor: [primaryColor, '#3b82f6', successColor],
+                    borderRadius: 8,
+                    barThickness: 60
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) label += ': ';
+                                label += context.raw;
+                                
+                                if (context.dataIndex > 0) {
+                                    const prevVal = context.dataset.data[context.dataIndex - 1];
+                                    const percentage = prevVal > 0 ? ((context.raw / prevVal) * 100).toFixed(1) : 0;
+                                    label += ` (${percentage}% conversión)`;
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: secondaryColor } },
+                    y: { grid: { display: false }, ticks: { color: secondaryColor } }
                 }
             }
         });
