@@ -274,7 +274,7 @@ async function generateReport() {
     const week = currentFullPeriod.substring(8);
     const range = getWeekRange(month, week);
     
-    // Fetch data filtered by date
+    // Fetch ALL data for the month if we are in Monthly view, otherwise just the week
     const { data: leads, error: lError } = await supabaseClient
         .from('leads')
         .select('*')
@@ -296,64 +296,49 @@ async function generateReport() {
 
     const reportData = {};
     Object.keys(zoneMapping).forEach(zone => {
+        reportData[zone] = { leads: 0, viables: 0, citas: 0, dispersado: 0, disp_count: 0, presupuesto: 0, atendidas: 0 };
+        
         if (week === 'MONTH') {
-            reportData[zone] = { leads: 0, viables: 0, citas: 0, dispersado: 0, disp_count: 0, presupuesto: 0, atendidas: 0 };
+            // AGGREGATE MONTHLY: Sum of W1 to W5
             ['W1', 'W2', 'W3', 'W4', 'W5'].forEach(w => {
                 const p = `${month}-${w}`;
-                const getWVal = (campo) => manualOverrides.find(o => o.zona === zone && o.campo === campo && o.periodo === p)?.valor || 0;
-                reportData[zone].presupuesto += getWVal('budget');
-                reportData[zone].atendidas += getWVal('atendidas');
-                reportData[zone].leads += getWVal('leads');
-                reportData[zone].viables += getWVal('viables');
-                reportData[zone].citas += getWVal('citas');
-                reportData[zone].disp_count += getWVal('disp_count');
-                reportData[zone].dispersado += getWVal('dispersado');
+                const wRange = getWeekRange(month, w);
+                
+                // Get manual overrides for this specific week
+                const overrides = manualOverrides.filter(o => o.zona === zone && o.periodo === p);
+                const getManual = (campo) => overrides.find(o => o.campo === campo)?.valor;
+
+                // Budget and Atendidas are ALWAYS manual
+                reportData[zone].presupuesto += getManual('budget') || 0;
+                reportData[zone].atendidas += getManual('atendidas') || 0;
+
+                // For the rest: Manual Overrides OR Real Data for that week
+                const wLeads = leads.filter(l => l.sucursal && zoneMapping[zone].includes(l.sucursal) && l.created_at >= wRange.start && l.created_at <= wRange.end + 'T23:59:59');
+                const wDisps = dispersiones.filter(d => d.sucursal && zoneMapping[zone].includes(d.sucursal) && d.created_at >= wRange.start && d.created_at <= wRange.end + 'T23:59:59');
+
+                reportData[zone].leads += getManual('leads') ?? wLeads.length;
+                reportData[zone].viables += getManual('viables') ?? wLeads.filter(l => ['DISPERSADO', 'EN PROCESO', 'CITA'].includes(l.etapa)).length;
+                reportData[zone].citas += getManual('citas') ?? wLeads.filter(l => l.etapa === 'CITA').length;
+                reportData[zone].disp_count += getManual('disp_count') ?? wDisps.length;
+                reportData[zone].dispersado += getManual('dispersado') ?? wDisps.reduce((acc, d) => acc + (parseFloat(d.monto) || 0), 0);
             });
         } else {
-            const getVal = (campo) => {
-                const match = manualOverrides.find(o => o.zona === zone && o.campo === campo && o.periodo === currentFullPeriod);
-                return match ? match.valor : null;
-            };
+            // SINGLE WEEK VIEW
+            const overrides = manualOverrides.filter(o => o.zona === zone && o.periodo === currentFullPeriod);
+            const getManual = (campo) => overrides.find(o => o.campo === campo)?.valor;
+
+            const zLeads = leads.filter(l => l.sucursal && zoneMapping[zone].includes(l.sucursal));
+            const zDisps = dispersiones.filter(d => d.sucursal && zoneMapping[zone].includes(d.sucursal));
 
             reportData[zone] = {
-                leads: getVal('leads') ?? 0,
-                viables: getVal('viables') ?? 0,
-                citas: getVal('citas') ?? 0,
-                dispersado: getVal('dispersado') ?? 0,
-                disp_count: getVal('disp_count') ?? 0,
-                presupuesto: getVal('budget') ?? 0,
-                atendidas: getVal('atendidas') ?? 0
+                presupuesto: getManual('budget') ?? 0,
+                atendidas: getManual('atendidas') ?? 0,
+                leads: getManual('leads') ?? zLeads.length,
+                viables: getManual('viables') ?? zLeads.filter(l => ['DISPERSADO', 'EN PROCESO', 'CITA'].includes(l.etapa)).length,
+                citas: getManual('citas') ?? zLeads.filter(l => l.etapa === 'CITA').length,
+                disp_count: getManual('disp_count') ?? zDisps.length,
+                dispersado: getManual('dispersado') ?? zDisps.reduce((acc, d) => acc + (parseFloat(d.monto) || 0), 0)
             };
-        }
-    });
-
-    // Aggregate Real Data Defaults
-    leads.forEach(lead => {
-        for (const [zone, branches] of Object.entries(zoneMapping)) {
-            if (branches.includes(lead.sucursal)) {
-                if (week !== 'MONTH') {
-                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'leads' && o.periodo === currentFullPeriod)) reportData[zone].leads++;
-                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'viables' && o.periodo === currentFullPeriod) && ['DISPERSADO', 'EN PROCESO', 'CITA'].includes(lead.etapa)) reportData[zone].viables++;
-                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'citas' && o.periodo === currentFullPeriod) && lead.etapa === 'CITA') reportData[zone].citas++;
-                }
-                break;
-            }
-        }
-    });
-
-    dispersiones.forEach(disp => {
-        for (const [zone, branches] of Object.entries(zoneMapping)) {
-            if (branches.includes(disp.sucursal)) {
-                if (week !== 'MONTH') {
-                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'dispersado' && o.periodo === currentFullPeriod)) {
-                        reportData[zone].dispersado += parseFloat(disp.monto) || 0;
-                    }
-                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'disp_count' && o.periodo === currentFullPeriod)) {
-                        reportData[zone].disp_count++;
-                    }
-                }
-                break;
-            }
         }
     });
 
