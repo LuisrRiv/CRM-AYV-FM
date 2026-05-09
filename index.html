@@ -95,9 +95,10 @@
                         <option value="2026-06" style="background: var(--bg-panel)">Junio 2026</option>
                     </select>
                 </div>
-                <button class="btn btn-outline"
-                    onclick="triggerNotification('Notificación de Prueba', 'Este es el sistema de alertas')">
+                <button class="btn btn-outline" id="notificationBtn"
+                    onclick="openNotificationCenter()" style="position: relative;">
                     <i class="fa-regular fa-bell"></i>
+                    <span id="notificationBadge" style="position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; background: var(--danger); border-radius: 50%; display: none; border: 2px solid var(--bg-panel);"></span>
                 </button>
                 <div class="avatar" id="userAvatar" title="Cerrar Sesión" onclick="logout()" style="cursor: pointer;">AM
                 </div>

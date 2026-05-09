@@ -41,6 +41,17 @@ function triggerNotification(title, message, type = 'info') {
     
     container.appendChild(toast);
     
+    // Browser Notification
+    if (Notification.permission === "granted" && type !== 'info') {
+        new Notification(title, { body: message, icon: 'logo.png' });
+    }
+
+    // Update Bell Badge if it's a real notification
+    if (type !== 'info') {
+        const badge = document.getElementById('notificationBadge');
+        if(badge) badge.style.display = 'block';
+    }
+    
     // Auto remove after animation ends (4s delay + 0.3s fadeOut)
     setTimeout(() => {
         if(container.contains(toast)) {
@@ -49,12 +60,60 @@ function triggerNotification(title, message, type = 'info') {
     }, 4500);
 }
 
+function openNotificationCenter() {
+    const badge = document.getElementById('notificationBadge');
+    if(badge) badge.style.display = 'none';
+    triggerNotification('Centro de Notificaciones', 'No tienes notificaciones pendientes.', 'info');
+}
+
+function requestNotificationPermission() {
+    if ("Notification" in window) {
+        Notification.requestPermission();
+    }
+}
+
 // ==========================================
 // Supabase Integration
 // ==========================================
 const supabaseUrl = 'https://tbzfvulycbaiwlrewpxv.supabase.co';
 const supabaseKey = 'sb_publishable_KRCLKUEu8d9EJgZzRmbBLg_hdk9IhFK';
 const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+// ==========================================
+// Realtime Notifications
+// ==========================================
+function setupRealtimeListeners() {
+    const currentUser = localStorage.getItem('crm-logged-in');
+    if (!currentUser) return;
+
+    console.log('Setting up realtime listeners for:', currentUser);
+
+    supabaseClient
+        .channel('tareas-changes')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tareas' }, payload => {
+            const newTask = payload.new;
+            if (newTask.asignado_a === currentUser) {
+                triggerNotification('Nueva Tarea Asignada', `Se te ha asignado: ${newTask.titulo}`, 'success');
+                fetchTasks();
+            }
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tareas' }, payload => {
+            const oldTask = payload.old;
+            const newTask = payload.new;
+            
+            // If assignee changed to current user
+            if (newTask.asignado_a === currentUser && oldTask.asignado_a !== currentUser) {
+                triggerNotification('Tarea Reasignada', `Se te ha asignado la tarea: ${newTask.titulo}`, 'success');
+                fetchTasks();
+            }
+            
+            // If state changed on a task assigned to current user
+            if (newTask.asignado_a === currentUser && newTask.estado !== oldTask.estado) {
+                // Could notify about state changes too
+            }
+        })
+        .subscribe();
+}
 
 async function fetchLeads() {
     const { data, error } = await supabaseClient.from('leads').select('*').order('created_at', { ascending: false });
@@ -586,11 +645,7 @@ async function deleteRow(btn, type, id) {
     }
 }
 
-// Inicializar datos al cargar
-document.addEventListener('DOMContentLoaded', async () => {
-    await fetchLeads();
-    await fetchDispersiones();
-});
+// Inicializar datos al cargar (Se maneja al final del archivo)
 
 // ==========================================
 // Global Month Filter Logic
@@ -1022,7 +1077,7 @@ function toggleTheme() {
 }
 
 // Check saved theme on load
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     checkAuth();
 
     const savedTheme = localStorage.getItem('crm-theme');
@@ -1032,10 +1087,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (btn) btn.innerHTML = '<i class="fa-solid fa-sun"></i>';
     }
 
-    // Initial data fetch
-    fetchLeads();
-    fetchTasks();
-    if(typeof fetchDispersiones === 'function') fetchDispersiones();
+    // Initialize data and listeners if already logged in
+    if (localStorage.getItem('crm-logged-in')) {
+        await fetchLeads();
+        await fetchTasks();
+        if(typeof fetchDispersiones === 'function') await fetchDispersiones();
+        setupRealtimeListeners();
+        requestNotificationPermission();
+    }
 });
 
 // ==========================================
@@ -1111,6 +1170,9 @@ function attemptLogin() {
         setTimeout(() => {
             loginScreen.style.display = 'none';
             applyPermissions(validUser);
+            // Initialize Realtime and Permissions after login
+            setupRealtimeListeners();
+            requestNotificationPermission();
         }, 300);
         
         triggerNotification('Bienvenido', `Has iniciado sesión como ${validUser.user}`, 'success');
