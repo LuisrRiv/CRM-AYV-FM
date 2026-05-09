@@ -204,6 +204,8 @@ function setupChatRealtime() {
 // ==========================================
 let conversionChart = null;
 let funnelChart = null;
+let marketShareChart = null;
+let closureChart = null;
 
 const zoneMapping = {
     'QUERETARO': ['QUERETARO', 'QUERETARO MOVIL'],
@@ -407,6 +409,59 @@ function updateReportCharts(data) {
                 scales: {
                     x: { grid: { display: false }, ticks: { color: secondaryColor } },
                     y: { grid: { display: false }, ticks: { color: secondaryColor } }
+                }
+            }
+        });
+    }
+
+    // Market Share Chart (Donut)
+    const ctxMarket = document.getElementById('marketShareChart');
+    if (ctxMarket) {
+        if (marketShareChart) marketShareChart.destroy();
+        marketShareChart = new Chart(ctxMarket, {
+            type: 'doughnut',
+            data: {
+                labels: zones,
+                datasets: [{
+                    data: dispersadoData,
+                    backgroundColor: [primaryColor, '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { color: secondaryColor, font: { size: 10 } } }
+                },
+                cutout: '70%'
+            }
+        });
+    }
+
+    // Closure Effectiveness Chart (Stacked Bar)
+    const ctxClosure = document.getElementById('closureEffectivenessChart');
+    if (ctxClosure) {
+        const atendidasData = zones.map(z => data[z].atendidas);
+        const dispCountData = zones.map(z => data[z].disp_count);
+
+        if (closureChart) closureChart.destroy();
+        closureChart = new Chart(ctxClosure, {
+            type: 'bar',
+            data: {
+                labels: zones,
+                datasets: [
+                    { label: 'Citas Atendidas', data: atendidasData, backgroundColor: 'rgba(148, 163, 184, 0.2)', borderRadius: 4 },
+                    { label: 'Dispersiones', data: dispCountData, backgroundColor: successColor, borderRadius: 4 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: secondaryColor } } },
+                scales: {
+                    x: { stacked: true, grid: { display: false }, ticks: { color: secondaryColor } },
+                    y: { stacked: false, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: secondaryColor } }
                 }
             }
         });
