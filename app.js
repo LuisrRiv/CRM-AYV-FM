@@ -252,7 +252,9 @@ async function generateReport() {
     dispersiones.forEach(disp => {
         for (const [zone, branches] of Object.entries(zoneMapping)) {
             if (branches.includes(disp.sucursal)) {
-                reportData[zone].dispersado += parseFloat(disp.monto) || 0;
+                if (!localStorage.getItem(`report-dispersado-${zone}`)) {
+                    reportData[zone].dispersado += parseFloat(disp.monto) || 0;
+                }
                 reportData[zone].disp_count++;
                 break;
             }
