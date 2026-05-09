@@ -115,6 +115,90 @@ function setupRealtimeListeners() {
         .subscribe();
 }
 
+// ==========================================
+// Chat Realtime Logic
+// ==========================================
+async function fetchChatMessages() {
+    const { data, error } = await supabaseClient
+        .from('mensajes')
+        .select('*')
+        .order('created_at', { ascending: true })
+        .limit(50);
+
+    if (error) {
+        console.error('Error fetching chat:', error);
+        return;
+    }
+
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+    container.innerHTML = '';
+
+    data.forEach(msg => renderChatMessage(msg, false));
+    container.scrollTop = container.scrollHeight;
+}
+
+function renderChatMessage(msg, shouldScroll = true) {
+    const container = document.getElementById('chatMessages');
+    const currentUser = localStorage.getItem('crm-logged-in');
+    const isMe = msg.usuario === currentUser;
+    
+    const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    const div = document.createElement('div');
+    div.style.display = 'flex';
+    div.style.flexDirection = 'column';
+    div.style.alignItems = isMe ? 'flex-end' : 'flex-start';
+    div.style.width = '100%';
+    
+    const bubbleStyle = isMe 
+        ? `background: var(--accent-primary); color: #1e293b; border-bottom-right-radius: 0.25rem;`
+        : `background: var(--bg-panel-hover); color: var(--text-primary); border: 1px solid var(--border-color); border-bottom-left-radius: 0.25rem;`;
+
+    div.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+            ${!isMe ? `<span style="font-size: 0.7rem; font-weight: 600; color: var(--text-secondary);">${msg.usuario}</span>` : ''}
+            <span style="font-size: 0.6rem; color: var(--text-secondary); opacity: 0.7;">${time}</span>
+        </div>
+        <div style="padding: 0.75rem 1rem; border-radius: 1rem; max-width: 80%; font-size: 0.9rem; line-height: 1.4; box-shadow: var(--shadow-sm); ${bubbleStyle}">
+            ${msg.mensaje}
+        </div>
+    `;
+    
+    container.appendChild(div);
+    if (shouldScroll) container.scrollTop = container.scrollHeight;
+}
+
+async function sendChatMessage(e) {
+    if (e) e.preventDefault();
+    const input = document.getElementById('chatInput');
+    const mensaje = input.value.trim();
+    const usuario = localStorage.getItem('crm-logged-in');
+
+    if (!mensaje || !usuario) return;
+
+    input.value = '';
+
+    const { error } = await supabaseClient.from('mensajes').insert([{
+        usuario: usuario,
+        mensaje: mensaje
+    }]);
+
+    if (error) {
+        console.error('Error sending message:', error);
+        triggerNotification('Error', 'No se pudo enviar el mensaje', 'warning');
+    }
+}
+
+function setupChatRealtime() {
+    supabaseClient
+        .channel('chat-global')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensajes' }, payload => {
+            renderChatMessage(payload.new);
+        })
+        .subscribe();
+}
+
 async function fetchLeads() {
     const { data, error } = await supabaseClient.from('leads').select('*').order('created_at', { ascending: false });
     if (error) {
@@ -1092,7 +1176,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         await fetchLeads();
         await fetchTasks();
         if(typeof fetchDispersiones === 'function') await fetchDispersiones();
+        await fetchChatMessages();
         setupRealtimeListeners();
+        setupChatRealtime();
         requestNotificationPermission();
     }
 });
@@ -1101,10 +1187,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Authentication Logic
 // ==========================================
 const allowedUsers = [
-    { user: 'adminlr', pass: 'AdminLR123', initials: 'AD', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones'] },
-    { user: 'franco lozada', pass: 'Franco123', initials: 'FL', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones'] },
-    { user: 'fabiola mendoza', pass: 'Fabiola123', initials: 'FM', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones'] },
-    { user: 'fatima morales', pass: 'Fatima123', initials: 'FT', panels: ['kanban', 'leads', 'assets'] },
+    { user: 'adminlr', pass: 'AdminLR123', initials: 'AD', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat'] },
+    { user: 'franco lozada', pass: 'Franco123', initials: 'FL', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat'] },
+    { user: 'fabiola mendoza', pass: 'Fabiola123', initials: 'FM', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat'] },
+    { user: 'fatima morales', pass: 'Fatima123', initials: 'FT', panels: ['kanban', 'leads', 'assets', 'chat'] },
     { user: 'invitado', pass: 'invitado123', initials: 'IN', panels: ['dashboard'] }
 ];
 
@@ -1172,6 +1258,8 @@ function attemptLogin() {
             applyPermissions(validUser);
             // Initialize Realtime and Permissions after login
             setupRealtimeListeners();
+            setupChatRealtime();
+            fetchChatMessages();
             requestNotificationPermission();
         }, 300);
         
