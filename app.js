@@ -296,13 +296,13 @@ function renderReportTable(data) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="font-medium">${zone}</td>
-            <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 120px;" value="${stats.presupuesto}" onchange="saveManualReportData('${zone}', 'budget', this.value)"></td>
+            <td><input type="number" step="any" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 120px;" value="${stats.presupuesto}" onchange="saveManualReportData('${zone}', 'budget', this.value)"></td>
             <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 80px;" value="${stats.atendidas}" onchange="saveManualReportData('${zone}', 'atendidas', this.value)"></td>
             <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 60px; text-align: center;" value="${stats.leads}" onchange="saveManualReportData('${zone}', 'leads', this.value)"></td>
             <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 60px; text-align: center;" value="${stats.viables}" onchange="saveManualReportData('${zone}', 'viables', this.value)"></td>
             <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 60px; text-align: center;" value="${stats.citas}" onchange="saveManualReportData('${zone}', 'citas', this.value)"></td>
             <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 60px; text-align: center;" value="${stats.disp_count}" onchange="saveManualReportData('${zone}', 'disp_count', this.value)"></td>
-            <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 120px; text-align: right; color: var(--success); font-weight: 600;" value="${stats.dispersado}" onchange="saveManualReportData('${zone}', 'dispersado', this.value)"></td>
+            <td><input type="number" step="any" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 120px; text-align: right; color: var(--success); font-weight: 600;" value="${stats.dispersado}" onchange="saveManualReportData('${zone}', 'dispersado', this.value)"></td>
         `;
         tbody.appendChild(tr);
     });
@@ -411,6 +411,15 @@ function updateReportCharts(data) {
             }
         });
     }
+}
+
+function setupReportRealtime() {
+    supabaseClient
+        .channel('report-sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'reporte_datos' }, () => {
+            generateReport();
+        })
+        .subscribe();
 }
 
 async function fetchLeads() {
@@ -1394,6 +1403,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await generateReport();
         setupRealtimeListeners();
         setupChatRealtime();
+        setupReportRealtime();
         requestNotificationPermission();
     }
 });
