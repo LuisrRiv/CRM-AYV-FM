@@ -214,6 +214,17 @@ const zoneMapping = {
     'XALAPA': ['XALAPA 20 NOV', 'XALAPA ARAUCARIAS']
 };
 
+let manualOverrides = [];
+
+async function fetchManualReportData() {
+    const { data, error } = await supabaseClient.from('reporte_datos').select('*');
+    if (error) {
+        console.error('Error fetching manual overrides:', error);
+        return [];
+    }
+    return data;
+}
+
 async function generateReport() {
     const { data: leads, error: lError } = await supabaseClient.from('leads').select('*');
     const { data: dispersiones, error: dError } = await supabaseClient.from('dispersiones').select('*');
@@ -223,39 +234,45 @@ async function generateReport() {
         return;
     }
 
+    manualOverrides = await fetchManualReportData();
+
     const reportData = {};
     Object.keys(zoneMapping).forEach(zone => {
+        const getVal = (campo) => {
+            const match = manualOverrides.find(o => o.zona === zone && o.campo === campo);
+            return match ? match.valor : null;
+        };
+
         reportData[zone] = {
-            leads: parseInt(localStorage.getItem(`report-leads-${zone}`)) || 0,
-            viables: parseInt(localStorage.getItem(`report-viables-${zone}`)) || 0,
-            citas: parseInt(localStorage.getItem(`report-citas-${zone}`)) || 0,
-            dispersado: parseFloat(localStorage.getItem(`report-dispersado-${zone}`)) || 0,
-            disp_count: parseInt(localStorage.getItem(`report-disp_count-${zone}`)) || 0,
-            presupuesto: parseFloat(localStorage.getItem(`report-budget-${zone}`)) || 0,
-            atendidas: parseInt(localStorage.getItem(`report-atendidas-${zone}`)) || 0
+            leads: getVal('leads') ?? 0,
+            viables: getVal('viables') ?? 0,
+            citas: getVal('citas') ?? 0,
+            dispersado: getVal('dispersado') ?? 0,
+            disp_count: getVal('disp_count') ?? 0,
+            presupuesto: getVal('budget') ?? 0,
+            atendidas: getVal('atendidas') ?? 0
         };
     });
 
-    // Aggregate Leads (as defaults if not manual)
+    // Aggregate Defaults if not manual
     leads.forEach(lead => {
         for (const [zone, branches] of Object.entries(zoneMapping)) {
             if (branches.includes(lead.sucursal)) {
-                if (!localStorage.getItem(`report-leads-${zone}`)) reportData[zone].leads++;
-                if (!localStorage.getItem(`report-viables-${zone}`) && ['DISPERSADO', 'EN PROCESO', 'CITA'].includes(lead.etapa)) reportData[zone].viables++;
-                if (!localStorage.getItem(`report-citas-${zone}`) && lead.etapa === 'CITA') reportData[zone].citas++;
+                if (!manualOverrides.find(o => o.zona === zone && o.campo === 'leads')) reportData[zone].leads++;
+                if (!manualOverrides.find(o => o.zona === zone && o.campo === 'viables') && ['DISPERSADO', 'EN PROCESO', 'CITA'].includes(lead.etapa)) reportData[zone].viables++;
+                if (!manualOverrides.find(o => o.zona === zone && o.campo === 'citas') && lead.etapa === 'CITA') reportData[zone].citas++;
                 break;
             }
         }
     });
 
-    // Aggregate Dispersiones
     dispersiones.forEach(disp => {
         for (const [zone, branches] of Object.entries(zoneMapping)) {
             if (branches.includes(disp.sucursal)) {
-                if (!localStorage.getItem(`report-dispersado-${zone}`)) {
+                if (!manualOverrides.find(o => o.zona === zone && o.campo === 'dispersado')) {
                     reportData[zone].dispersado += parseFloat(disp.monto) || 0;
                 }
-                if (!localStorage.getItem(`report-disp_count-${zone}`)) {
+                if (!manualOverrides.find(o => o.zona === zone && o.campo === 'disp_count')) {
                     reportData[zone].disp_count++;
                 }
                 break;
@@ -291,9 +308,20 @@ function renderReportTable(data) {
     });
 }
 
-function saveManualReportData(zone, type, value) {
-    localStorage.setItem(`report-${type}-${zone}`, value);
-    generateReport(); // Refresh charts
+async function saveManualReportData(zone, type, value) {
+    const campo = type === 'budget' ? 'budget' : type;
+    const val = parseFloat(value) || 0;
+
+    const { error } = await supabaseClient
+        .from('reporte_datos')
+        .upsert({ zona: zone, campo: campo, valor: val }, { onConflict: 'zona,campo' });
+
+    if (error) {
+        console.error('Error saving report data:', error);
+        triggerNotification('Error', 'No se pudo guardar el dato permanentemente', 'warning');
+    } else {
+        generateReport(); // Refresh charts
+    }
 }
 
 function updateReportCharts(data) {
