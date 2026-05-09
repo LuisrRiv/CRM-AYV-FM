@@ -71,6 +71,9 @@
             <a class="nav-item" data-target="chat">
                 <i class="fa-solid fa-comments"></i> Chat del Equipo
             </a>
+            <a class="nav-item" data-target="reportes">
+                <i class="fa-solid fa-file-invoice-dollar"></i> Reporte Semanal
+            </a>
         </nav>
     </aside>
 
@@ -375,6 +378,48 @@
                                 <i class="fa-solid fa-paper-plane"></i>
                             </button>
                         </form>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Weekly Report View -->
+            <section id="reportes" class="view-section">
+                <div class="flex justify-between items-center mb-4">
+                    <h1 class="text-2xl">Reporte de Desempeño Semanal</h1>
+                    <div class="flex gap-2">
+                        <button class="btn btn-outline" onclick="window.print()"><i class="fa-solid fa-print"></i> Imprimir</button>
+                        <button class="btn" onclick="generateReport()"><i class="fa-solid fa-sync"></i> Actualizar Datos</button>
+                    </div>
+                </div>
+                
+                <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 1rem; border: 1px solid var(--border-color); margin-bottom: 2rem;">
+                    <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-secondary);">Entrada de Datos Manuales</h3>
+                    <table class="data-table" id="manualEntryTable">
+                        <thead>
+                            <tr>
+                                <th>Zona</th>
+                                <th>Presupuesto ($)</th>
+                                <th>Citas Atendidas</th>
+                                <th>Leads (Auto)</th>
+                                <th>Viables (Auto)</th>
+                                <th>Citas (Auto)</th>
+                                <th>Dispersiones (Auto)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportTableBody">
+                            <!-- Generado dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 1rem; border: 1px solid var(--border-color); height: 350px;">
+                        <h3 style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">Eficiencia de Conversión (Leads vs Viables)</h3>
+                        <canvas id="conversionChart"></canvas>
+                    </div>
+                    <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 1rem; border: 1px solid var(--border-color); height: 350px;">
+                        <h3 style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">Presupuesto vs Dispersión</h3>
+                        <canvas id="budgetChart"></canvas>
                     </div>
                 </div>
             </section>

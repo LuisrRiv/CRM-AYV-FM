@@ -199,6 +199,155 @@ function setupChatRealtime() {
         .subscribe();
 }
 
+// ==========================================
+// Weekly Report Logic
+// ==========================================
+let conversionChart = null;
+let budgetChart = null;
+
+const zoneMapping = {
+    'QUERETARO': ['QUERETARO', 'QUERETARO MOVIL'],
+    'GUADALAJARA': ['ZAPOPAN', 'GUADALAJARA MOVIL'],
+    'PUEBLA': ['PUEBLA ANZURES', 'PUEBLA CHOLULA'],
+    'MONTERREY': ['MONTERREY CENTRO', 'MONTERREY TERRANOVA', 'MONTERREY MOVIL'],
+    'VERACRUZ': ['VERACRUZ'],
+    'XALAPA': ['XALAPA 20 NOV', 'XALAPA ARAUCARIAS']
+};
+
+async function generateReport() {
+    const { data: leads, error: lError } = await supabaseClient.from('leads').select('*');
+    const { data: dispersiones, error: dError } = await supabaseClient.from('dispersiones').select('*');
+
+    if (lError || dError) {
+        console.error('Error fetching report data:', lError || dError);
+        return;
+    }
+
+    const reportData = {};
+    Object.keys(zoneMapping).forEach(zone => {
+        reportData[zone] = {
+            leads: 0,
+            viables: 0,
+            citas: 0,
+            dispersado: 0,
+            presupuesto: parseFloat(localStorage.getItem(`report-budget-${zone}`)) || 0,
+            atendidas: parseInt(localStorage.getItem(`report-atendidas-${zone}`)) || 0
+        };
+    });
+
+    // Aggregate Leads
+    leads.forEach(lead => {
+        for (const [zone, branches] of Object.entries(zoneMapping)) {
+            if (branches.includes(lead.sucursal)) {
+                reportData[zone].leads++;
+                if (['DISPERSADO', 'EN PROCESO', 'CITA'].includes(lead.etapa)) reportData[zone].viables++;
+                if (lead.etapa === 'CITA') reportData[zone].citas++;
+                break;
+            }
+        }
+    });
+
+    // Aggregate Dispersiones
+    dispersiones.forEach(disp => {
+        for (const [zone, branches] of Object.entries(zoneMapping)) {
+            if (branches.includes(disp.sucursal)) {
+                reportData[zone].dispersado += parseFloat(disp.monto) || 0;
+                break;
+            }
+        }
+    });
+
+    renderReportTable(reportData);
+    updateReportCharts(reportData);
+}
+
+function renderReportTable(data) {
+    const tbody = document.getElementById('reportTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    Object.entries(data).forEach(([zone, stats]) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="font-medium">${zone}</td>
+            <td><input type="number" class="form-control" style="padding: 0.25rem 0.5rem; width: 120px;" value="${stats.presupuesto}" onchange="saveManualReportData('${zone}', 'budget', this.value)"></td>
+            <td><input type="number" class="form-control" style="padding: 0.25rem 0.5rem; width: 80px;" value="${stats.atendidas}" onchange="saveManualReportData('${zone}', 'atendidas', this.value)"></td>
+            <td style="text-align: center;">${stats.leads}</td>
+            <td style="text-align: center;">${stats.viables}</td>
+            <td style="text-align: center;">${stats.citas}</td>
+            <td class="text-success font-medium" style="text-align: right;">$${stats.dispersado.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function saveManualReportData(zone, type, value) {
+    localStorage.setItem(`report-${type === 'budget' ? 'budget' : 'atendidas'}-${zone}`, value);
+    generateReport(); // Refresh charts
+}
+
+function updateReportCharts(data) {
+    const zones = Object.keys(data);
+    const leadsData = zones.map(z => data[z].leads);
+    const viablesData = zones.map(z => data[z].viables);
+    const budgetData = zones.map(z => data[z].presupuesto);
+    const dispersadoData = zones.map(z => data[z].dispersado);
+
+    // Color palette matching the CRM style
+    const primaryColor = '#bdfb2f';
+    const secondaryColor = '#94a3b8';
+    const dangerColor = '#ef4444';
+    const successColor = '#10b981';
+
+    // Conversion Chart
+    const ctxConv = document.getElementById('conversionChart');
+    if (ctxConv) {
+        if (conversionChart) conversionChart.destroy();
+        conversionChart = new Chart(ctxConv, {
+            type: 'bar',
+            data: {
+                labels: zones,
+                datasets: [
+                    { label: 'Leads Totales', data: leadsData, backgroundColor: secondaryColor, borderRadius: 4 },
+                    { label: 'Leads Viables', data: viablesData, backgroundColor: primaryColor, borderRadius: 4 }
+                ]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // Budget vs Dispersion Chart
+    const ctxBudget = document.getElementById('budgetChart');
+    if (ctxBudget) {
+        if (budgetChart) budgetChart.destroy();
+        budgetChart = new Chart(ctxBudget, {
+            type: 'line',
+            data: {
+                labels: zones,
+                datasets: [
+                    { label: 'Presupuesto', data: budgetData, borderColor: dangerColor, backgroundColor: dangerColor, tension: 0.4, fill: false, pointRadius: 4 },
+                    { label: 'Dispersado', data: dispersadoData, borderColor: successColor, backgroundColor: 'rgba(16, 185, 129, 0.1)', tension: 0.4, fill: true, pointRadius: 4 }
+                ]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+}
+
 async function fetchLeads() {
     const { data, error } = await supabaseClient.from('leads').select('*').order('created_at', { ascending: false });
     if (error) {
@@ -1177,6 +1326,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await fetchTasks();
         if(typeof fetchDispersiones === 'function') await fetchDispersiones();
         await fetchChatMessages();
+        await generateReport();
         setupRealtimeListeners();
         setupChatRealtime();
         requestNotificationPermission();
