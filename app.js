@@ -203,7 +203,6 @@ function setupChatRealtime() {
 // Weekly Report Logic
 // ==========================================
 let conversionChart = null;
-let budgetChart = null;
 let funnelChart = null;
 
 const zoneMapping = {
@@ -324,30 +323,6 @@ function updateReportCharts(data) {
                 datasets: [
                     { label: 'Leads Totales', data: leadsData, backgroundColor: secondaryColor, borderRadius: 4 },
                     { label: 'Leads Viables', data: viablesData, backgroundColor: primaryColor, borderRadius: 4 }
-                ]
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
-                    x: { grid: { display: false } }
-                }
-            }
-        });
-    }
-
-    // Budget vs Dispersion Chart
-    const ctxBudget = document.getElementById('budgetChart');
-    if (ctxBudget) {
-        if (budgetChart) budgetChart.destroy();
-        budgetChart = new Chart(ctxBudget, {
-            type: 'line',
-            data: {
-                labels: zones,
-                datasets: [
-                    { label: 'Presupuesto', data: budgetData, borderColor: dangerColor, backgroundColor: dangerColor, tension: 0.4, fill: false, pointRadius: 4 },
-                    { label: 'Dispersado', data: dispersadoData, borderColor: successColor, backgroundColor: 'rgba(16, 185, 129, 0.1)', tension: 0.4, fill: true, pointRadius: 4 }
                 ]
             },
             options: { 
