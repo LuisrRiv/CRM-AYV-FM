@@ -230,7 +230,7 @@ async function generateReport() {
             viables: parseInt(localStorage.getItem(`report-viables-${zone}`)) || 0,
             citas: parseInt(localStorage.getItem(`report-citas-${zone}`)) || 0,
             dispersado: parseFloat(localStorage.getItem(`report-dispersado-${zone}`)) || 0,
-            disp_count: 0,
+            disp_count: parseInt(localStorage.getItem(`report-disp_count-${zone}`)) || 0,
             presupuesto: parseFloat(localStorage.getItem(`report-budget-${zone}`)) || 0,
             atendidas: parseInt(localStorage.getItem(`report-atendidas-${zone}`)) || 0
         };
@@ -255,18 +255,9 @@ async function generateReport() {
                 if (!localStorage.getItem(`report-dispersado-${zone}`)) {
                     reportData[zone].dispersado += parseFloat(disp.monto) || 0;
                 }
-                reportData[zone].disp_count++;
-                break;
-            }
-        }
-    });
-
-    // Aggregate Dispersiones (as default if not manual)
-    dispersiones.forEach(disp => {
-        for (const [zone, branches] of Object.entries(zoneMapping)) {
-            if (branches.includes(disp.sucursal)) {
-                if (!localStorage.getItem(`report-dispersado-${zone}`)) reportData[zone].dispersado += parseFloat(disp.monto) || 0;
-                reportData[zone].disp_count++;
+                if (!localStorage.getItem(`report-disp_count-${zone}`)) {
+                    reportData[zone].disp_count++;
+                }
                 break;
             }
         }
@@ -293,6 +284,7 @@ function renderReportTable(data) {
             <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 60px; text-align: center;" value="${stats.leads}" onchange="saveManualReportData('${zone}', 'leads', this.value)"></td>
             <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 60px; text-align: center;" value="${stats.viables}" onchange="saveManualReportData('${zone}', 'viables', this.value)"></td>
             <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 60px; text-align: center;" value="${stats.citas}" onchange="saveManualReportData('${zone}', 'citas', this.value)"></td>
+            <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 60px; text-align: center;" value="${stats.disp_count}" onchange="saveManualReportData('${zone}', 'disp_count', this.value)"></td>
             <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 120px; text-align: right; color: var(--success); font-weight: 600;" value="${stats.dispersado}" onchange="saveManualReportData('${zone}', 'dispersado', this.value)"></td>
         `;
         tbody.appendChild(tr);
