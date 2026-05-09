@@ -392,17 +392,35 @@
                     </div>
                 </div>
                 
-                <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; overflow-x: auto; padding-bottom: 0.5rem;" id="reportTabs">
-                    <button class="tab-btn active" onclick="setReportPeriod('W1')">Semana 1 Mayo</button>
-                    <button class="tab-btn" onclick="setReportPeriod('W2')">Semana 2 Mayo</button>
-                    <button class="tab-btn" onclick="setReportPeriod('W3')">Semana 3 Mayo</button>
-                    <button class="tab-btn" onclick="setReportPeriod('W4')">Semana 4 Mayo</button>
-                    <button class="tab-btn" onclick="setReportPeriod('W5')">Semana 5 Mayo</button>
-                    <button class="tab-btn" onclick="setReportPeriod('MONTH')">RESUMEN MENSUAL</button>
+                <div style="display: flex; gap: 1rem; margin-bottom: 2rem; align-items: center; background: var(--bg-panel); padding: 1rem; border-radius: 1rem; border: 1px solid var(--border-color);">
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Mes de Reporte</label>
+                        <select id="selectMonth" class="form-control" onchange="updateReportView()">
+                            <option value="2026-05">Mayo 2026</option>
+                            <option value="2026-06">Junio 2026</option>
+                            <option value="2026-07">Julio 2026</option>
+                            <option value="2026-08">Agosto 2026</option>
+                            <option value="2026-09">Septiembre 2026</option>
+                            <option value="2026-10">Octubre 2026</option>
+                            <option value="2026-11">Noviembre 2026</option>
+                            <option value="2026-12">Diciembre 2026</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Periodo</label>
+                        <select id="selectWeek" class="form-control" onchange="updateReportView()">
+                            <option value="W1">Semana 1</option>
+                            <option value="W2">Semana 2</option>
+                            <option value="W3">Semana 3</option>
+                            <option value="W4">Semana 4</option>
+                            <option value="W5">Semana 5</option>
+                            <option value="MONTH">Resumen Mensual</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 1rem; border: 1px solid var(--border-color); margin-bottom: 2rem;">
-                    <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-secondary);" id="manualEntryTitle">Entrada de Datos Manuales - Semana 1</h3>
+                    <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-secondary);" id="manualEntryTitle">Entrada de Datos Manuales - Semana 1 (Mayo 2026)</h3>
                     <table class="data-table" id="manualEntryTable">
                         <thead>
                             <tr>

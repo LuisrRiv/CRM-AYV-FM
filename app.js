@@ -217,28 +217,44 @@ const zoneMapping = {
 };
 
 let manualOverrides = [];
-let currentReportPeriod = 'W1'; // W1, W2, W3, W4, W5, MONTH
+let currentFullPeriod = '2026-05-W1';
 
-const monthWeekRanges = {
-    'W1': { start: '2026-05-01', end: '2026-05-07' },
-    'W2': { start: '2026-05-08', end: '2026-05-14' },
-    'W3': { start: '2026-05-15', end: '2026-05-21' },
-    'W4': { start: '2026-05-22', end: '2026-05-28' },
-    'W5': { start: '2026-05-29', end: '2026-05-31' },
-    'MONTH': { start: '2026-05-01', end: '2026-05-31' }
-};
-
-async function setReportPeriod(period) {
-    currentReportPeriod = period;
+function getWeekRange(yearMonth, week) {
+    const [year, month] = yearMonth.split('-').map(Number);
+    if (week === 'MONTH') {
+        const lastDay = new Date(year, month, 0).getDate();
+        return { start: `${yearMonth}-01`, end: `${yearMonth}-${lastDay}` };
+    }
     
-    // Update UI
-    document.querySelectorAll('#reportTabs .tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.getAttribute('onclick').includes(`'${period}'`));
-    });
+    // Simple 7-day windows for weeks
+    const ranges = {
+        'W1': { s: 1, e: 7 },
+        'W2': { s: 8, e: 14 },
+        'W3': { s: 15, e: 21 },
+        'W4': { s: 22, e: 28 },
+        'W5': { s: 29, e: 31 }
+    };
+    
+    const r = ranges[week];
+    const lastDayOfMonth = new Date(year, month, 0).getDate();
+    const endDay = Math.min(r.e, lastDayOfMonth);
+    
+    const pad = (n) => n.toString().padStart(2, '0');
+    return { 
+        start: `${yearMonth}-${pad(r.s)}`, 
+        end: `${yearMonth}-${pad(endDay)}` 
+    };
+}
+
+async function updateReportView() {
+    const month = document.getElementById('selectMonth').value;
+    const week = document.getElementById('selectWeek').value;
+    currentFullPeriod = `${month}-${week}`;
     
     const title = document.getElementById('manualEntryTitle');
     if (title) {
-        title.innerText = period === 'MONTH' ? 'Resumen Consolidado de Mayo' : `Entrada de Datos Manuales - Semana ${period.replace('W', '')}`;
+        const monthName = document.getElementById('selectMonth').selectedOptions[0].text;
+        title.innerText = week === 'MONTH' ? `Resumen Consolidado - ${monthName}` : `Entrada de Datos Manuales - ${week.replace('W', 'Semana ')} (${monthName})`;
     }
 
     generateReport();
@@ -254,7 +270,9 @@ async function fetchManualReportData() {
 }
 
 async function generateReport() {
-    const range = monthWeekRanges[currentReportPeriod];
+    const month = currentFullPeriod.substring(0, 7);
+    const week = currentFullPeriod.substring(8);
+    const range = getWeekRange(month, week);
     
     // Fetch data filtered by date
     const { data: leads, error: lError } = await supabaseClient
@@ -278,10 +296,11 @@ async function generateReport() {
 
     const reportData = {};
     Object.keys(zoneMapping).forEach(zone => {
-        if (currentReportPeriod === 'MONTH') {
+        if (week === 'MONTH') {
             reportData[zone] = { leads: 0, viables: 0, citas: 0, dispersado: 0, disp_count: 0, presupuesto: 0, atendidas: 0 };
             ['W1', 'W2', 'W3', 'W4', 'W5'].forEach(w => {
-                const getWVal = (campo) => manualOverrides.find(o => o.zona === zone && o.campo === campo && o.periodo === w)?.valor || 0;
+                const p = `${month}-${w}`;
+                const getWVal = (campo) => manualOverrides.find(o => o.zona === zone && o.campo === campo && o.periodo === p)?.valor || 0;
                 reportData[zone].presupuesto += getWVal('budget');
                 reportData[zone].atendidas += getWVal('atendidas');
                 reportData[zone].leads += getWVal('leads');
@@ -292,7 +311,7 @@ async function generateReport() {
             });
         } else {
             const getVal = (campo) => {
-                const match = manualOverrides.find(o => o.zona === zone && o.campo === campo && o.periodo === currentReportPeriod);
+                const match = manualOverrides.find(o => o.zona === zone && o.campo === campo && o.periodo === currentFullPeriod);
                 return match ? match.valor : null;
             };
 
@@ -312,10 +331,10 @@ async function generateReport() {
     leads.forEach(lead => {
         for (const [zone, branches] of Object.entries(zoneMapping)) {
             if (branches.includes(lead.sucursal)) {
-                if (currentReportPeriod !== 'MONTH') {
-                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'leads' && o.periodo === currentReportPeriod)) reportData[zone].leads++;
-                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'viables' && o.periodo === currentReportPeriod) && ['DISPERSADO', 'EN PROCESO', 'CITA'].includes(lead.etapa)) reportData[zone].viables++;
-                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'citas' && o.periodo === currentReportPeriod) && lead.etapa === 'CITA') reportData[zone].citas++;
+                if (week !== 'MONTH') {
+                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'leads' && o.periodo === currentFullPeriod)) reportData[zone].leads++;
+                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'viables' && o.periodo === currentFullPeriod) && ['DISPERSADO', 'EN PROCESO', 'CITA'].includes(lead.etapa)) reportData[zone].viables++;
+                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'citas' && o.periodo === currentFullPeriod) && lead.etapa === 'CITA') reportData[zone].citas++;
                 }
                 break;
             }
@@ -325,11 +344,11 @@ async function generateReport() {
     dispersiones.forEach(disp => {
         for (const [zone, branches] of Object.entries(zoneMapping)) {
             if (branches.includes(disp.sucursal)) {
-                if (currentReportPeriod !== 'MONTH') {
-                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'dispersado' && o.periodo === currentReportPeriod)) {
+                if (week !== 'MONTH') {
+                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'dispersado' && o.periodo === currentFullPeriod)) {
                         reportData[zone].dispersado += parseFloat(disp.monto) || 0;
                     }
-                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'disp_count' && o.periodo === currentReportPeriod)) {
+                    if (!manualOverrides.find(o => o.zona === zone && o.campo === 'disp_count' && o.periodo === currentFullPeriod)) {
                         reportData[zone].disp_count++;
                     }
                 }
@@ -348,7 +367,8 @@ function renderReportTable(data) {
     tbody.innerHTML = '';
 
     const currentUser = localStorage.getItem('crm-logged-in');
-    const isReadOnly = currentUser === 'invitado' || currentReportPeriod === 'MONTH';
+    const week = currentFullPeriod.substring(8);
+    const isReadOnly = currentUser === 'invitado' || week === 'MONTH';
 
     Object.entries(data).forEach(([zone, stats]) => {
         const tr = document.createElement('tr');
@@ -367,14 +387,15 @@ function renderReportTable(data) {
 }
 
 async function saveManualReportData(zone, type, value) {
-    if (currentReportPeriod === 'MONTH') return;
+    const week = currentFullPeriod.substring(8);
+    if (week === 'MONTH') return;
 
     const campo = type === 'budget' ? 'budget' : type;
     const val = parseFloat(value) || 0;
 
     const { error } = await supabaseClient
         .from('reporte_datos')
-        .upsert({ zona: zone, campo: campo, valor: val, periodo: currentReportPeriod }, { onConflict: 'periodo,zona,campo' });
+        .upsert({ zona: zone, campo: campo, valor: val, periodo: currentFullPeriod }, { onConflict: 'periodo,zona,campo' });
 
     if (error) {
         console.error('Error saving report data:', error);
