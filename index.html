@@ -74,6 +74,9 @@
             <a class="nav-item" data-target="reportes">
                 <i class="fa-solid fa-file-invoice-dollar"></i> Reporte Semanal
             </a>
+            <a class="nav-item" data-target="registroLeads">
+                <i class="fa-solid fa-address-book"></i> Registro de Leads
+            </a>
         </nav>
     </aside>
 
@@ -456,6 +459,74 @@
                     <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 1rem; border: 1px solid var(--border-color); height: 350px;">
                         <h3 style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">Citas vs Dispersiones (Efectividad de Cierre)</h3>
                         <canvas id="closureEffectivenessChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Registro de Leads View -->
+            <section id="registroLeads" class="view-section">
+                <div class="flex justify-between items-center mb-4">
+                    <h1 class="text-2xl">Registro de Leads Totales</h1>
+                    <div class="flex gap-2">
+                        <button class="btn" onclick="updateRegistroLeadsView()"><i class="fa-solid fa-sync"></i> Actualizar</button>
+                    </div>
+                </div>
+
+                <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 1rem; border: 1px solid var(--border-color); margin-bottom: 2rem;">
+                    <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; align-items: center;">
+                        <div style="width: 250px;">
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Mes de Registro</label>
+                            <select id="registroMonth" class="form-control" onchange="updateRegistroLeadsView()">
+                                <option value="2026-04">Abril 2026</option>
+                                <option value="2026-05" selected>Mayo 2026</option>
+                                <option value="2026-06">Junio 2026</option>
+                                <option value="2026-07">Julio 2026</option>
+                                <option value="2026-08">Agosto 2026</option>
+                                <option value="2026-09">Septiembre 2026</option>
+                                <option value="2026-10">Octubre 2026</option>
+                                <option value="2026-11">Noviembre 2026</option>
+                                <option value="2026-12">Diciembre 2026</option>
+                            </select>
+                        </div>
+                        <div style="flex: 1; padding-top: 1rem;">
+                            <p style="font-size: 0.875rem; color: var(--text-secondary);">
+                                <i class="fa-solid fa-circle-info" style="color: var(--accent-primary); margin-right: 0.5rem;"></i>
+                                Ingresa manualmente el total de leads recibidos y los leads que resultaron viables para cada sucursal y semana.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="overflow-x: auto;">
+                        <table class="data-table" id="registroLeadsTable">
+                            <thead style="position: sticky; top: 0; background: var(--bg-panel); z-index: 10;">
+                                <tr>
+                                    <th rowspan="2" style="border-bottom: 2px solid var(--border-color); min-width: 180px;">Sucursal</th>
+                                    <th colspan="2" style="text-align: center; border-bottom: 2px solid var(--border-color); background: rgba(189, 251, 47, 0.05);">Semana 1</th>
+                                    <th colspan="2" style="text-align: center; border-bottom: 2px solid var(--border-color);">Semana 2</th>
+                                    <th colspan="2" style="text-align: center; border-bottom: 2px solid var(--border-color); background: rgba(189, 251, 47, 0.05);">Semana 3</th>
+                                    <th colspan="2" style="text-align: center; border-bottom: 2px solid var(--border-color);">Semana 4</th>
+                                    <th colspan="2" style="text-align: center; border-bottom: 2px solid var(--border-color); background: rgba(189, 251, 47, 0.05);">Semana 5</th>
+                                    <th colspan="2" style="text-align: center; border-bottom: 2px solid var(--border-color); background: var(--bg-dark);">Total Mes</th>
+                                </tr>
+                                <tr>
+                                    <th style="font-size: 0.65rem; text-align: center; background: rgba(189, 251, 47, 0.05);">Totales</th>
+                                    <th style="font-size: 0.65rem; text-align: center; background: rgba(189, 251, 47, 0.05); color: var(--accent-primary);">Viables</th>
+                                    <th style="font-size: 0.65rem; text-align: center;">Totales</th>
+                                    <th style="font-size: 0.65rem; text-align: center; color: var(--accent-primary);">Viables</th>
+                                    <th style="font-size: 0.65rem; text-align: center; background: rgba(189, 251, 47, 0.05);">Totales</th>
+                                    <th style="font-size: 0.65rem; text-align: center; background: rgba(189, 251, 47, 0.05); color: var(--accent-primary);">Viables</th>
+                                    <th style="font-size: 0.65rem; text-align: center;">Totales</th>
+                                    <th style="font-size: 0.65rem; text-align: center; color: var(--accent-primary);">Viables</th>
+                                    <th style="font-size: 0.65rem; text-align: center; background: rgba(189, 251, 47, 0.05);">Totales</th>
+                                    <th style="font-size: 0.65rem; text-align: center; background: rgba(189, 251, 47, 0.05); color: var(--accent-primary);">Viables</th>
+                                    <th style="font-size: 0.65rem; text-align: center; background: var(--bg-dark);">Totales</th>
+                                    <th style="font-size: 0.65rem; text-align: center; background: var(--bg-dark); color: var(--accent-primary);">Viables</th>
+                                </tr>
+                            </thead>
+                            <tbody id="registroLeadsTableBody">
+                                <!-- Dinámico -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </section>

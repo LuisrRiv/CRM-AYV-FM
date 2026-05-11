@@ -537,8 +537,107 @@ function setupReportRealtime() {
         .channel('report-sync')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'reporte_datos' }, () => {
             generateReport();
+            updateRegistroLeadsView();
         })
         .subscribe();
+}
+
+// ==========================================
+// Registro de Leads Logic
+// ==========================================
+const sucursalesList = [
+    "XALAPA 20 NOV", "XALAPA ARAUCARIAS", "VERACRUZ", "ZAPOPAN", 
+    "MONTERREY CENTRO", "MONTERREY TERRANOVA", "MONTERREY MOVIL", 
+    "PUEBLA ANZURES", "PUEBLA CHOLULA", "QUERETARO", "QUERETARO MOVIL", 
+    "GUADALAJARA MOVIL"
+];
+
+async function updateRegistroLeadsView() {
+    const month = document.getElementById('registroMonth').value;
+    const { data, error } = await supabaseClient
+        .from('reporte_datos')
+        .select('*')
+        .like('periodo', `${month}%`);
+
+    if (error) {
+        console.error('Error fetching registro leads:', error);
+        return;
+    }
+
+    renderRegistroLeadsTable(data, month);
+}
+
+function renderRegistroLeadsTable(manualData, month) {
+    const tbody = document.getElementById('registroLeadsTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const currentUser = localStorage.getItem('crm-logged-in');
+    const isReadOnly = currentUser === 'invitado';
+
+    sucursalesList.forEach(sucursal => {
+        const tr = document.createElement('tr');
+        
+        // Sucursal Name
+        let html = `<td class="font-medium" style="background: var(--bg-panel); position: sticky; left: 0; z-index: 5; border-right: 1px solid var(--border-color);">${sucursal}</td>`;
+        
+        let totalMonthBrutos = 0;
+        let totalMonthViables = 0;
+
+        // Weeks 1 to 5
+        for (let w = 1; w <= 5; w++) {
+            const periodo = `${month}-W${w}`;
+            const brutos = manualData.find(d => d.zona === sucursal && d.periodo === periodo && d.campo === 'total_brutos')?.valor || 0;
+            const viables = manualData.find(d => d.zona === sucursal && d.periodo === periodo && d.campo === 'total_viables')?.valor || 0;
+            
+            totalMonthBrutos += brutos;
+            totalMonthViables += viables;
+
+            const bgColor = w % 2 !== 0 ? 'rgba(189, 251, 47, 0.05)' : 'transparent';
+
+            html += `
+                <td style="background: ${bgColor}; padding: 0.5rem; text-align: center;">
+                    <input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} 
+                        style="width: 50px; padding: 0.25rem; text-align: center; font-size: 0.8rem;" 
+                        value="${brutos}" onchange="saveRegistroLeadData('${sucursal}', 'total_brutos', this.value, '${periodo}')">
+                </td>
+                <td style="background: ${bgColor}; padding: 0.5rem; text-align: center;">
+                    <input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} 
+                        style="width: 50px; padding: 0.25rem; text-align: center; font-size: 0.8rem; border-color: var(--accent-primary);" 
+                        value="${viables}" onchange="saveRegistroLeadData('${sucursal}', 'total_viables', this.value, '${periodo}')">
+                </td>
+            `;
+        }
+
+        // Totals Column
+        html += `
+            <td style="background: var(--bg-dark); font-weight: 700; text-align: center;">${totalMonthBrutos}</td>
+            <td style="background: var(--bg-dark); font-weight: 700; text-align: center; color: var(--accent-primary);">${totalMonthViables}</td>
+        `;
+
+        tr.innerHTML = html;
+        tbody.appendChild(tr);
+    });
+}
+
+async function saveRegistroLeadData(sucursal, campo, value, periodo) {
+    const val = parseInt(value) || 0;
+
+    const { error } = await supabaseClient
+        .from('reporte_datos')
+        .upsert({ 
+            zona: sucursal, 
+            campo: campo, 
+            valor: val, 
+            periodo: periodo 
+        }, { onConflict: 'periodo,zona,campo' });
+
+    if (error) {
+        console.error('Error saving registro data:', error);
+        triggerNotification('Error', 'No se pudo guardar el dato', 'warning');
+    } else {
+        updateRegistroLeadsView(); // Refresh table totals
+    }
 }
 
 async function fetchLeads() {
@@ -1520,6 +1619,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(typeof fetchDispersiones === 'function') await fetchDispersiones();
         await fetchChatMessages();
         await generateReport();
+        await updateRegistroLeadsView();
         setupRealtimeListeners();
         setupChatRealtime();
         setupReportRealtime();
@@ -1531,11 +1631,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Authentication Logic
 // ==========================================
 const allowedUsers = [
-    { user: 'adminlr', pass: 'AdminLR123', initials: 'AD', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes'] },
+    { user: 'adminlr', pass: 'AdminLR123', initials: 'AD', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads'] },
     { user: 'franco lozada', pass: 'Franco123', initials: 'FL', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat'] },
     { user: 'fabiola mendoza', pass: 'Fabiola123', initials: 'FM', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat'] },
     { user: 'fatima morales', pass: 'Fatima123', initials: 'FT', panels: ['kanban', 'leads', 'assets', 'chat'] },
-    { user: 'invitado', pass: 'invitado123', initials: 'IN', panels: ['dashboard', 'reportes'] }
+    { user: 'invitado', pass: 'invitado123', initials: 'IN', panels: ['dashboard', 'reportes', 'registroLeads'] }
 ];
 
 function switchView(targetId) {
