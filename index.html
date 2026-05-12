@@ -147,7 +147,7 @@
                     </div>
                 </div>
                 <!-- Graphical Section -->
-                <div class="flex gap-4">
+                <div class="flex gap-4 mb-4">
                     <div
                         style="flex: 2; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; height: 300px;">
                         <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">Leads por
@@ -159,6 +159,16 @@
                         <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">Distribución
                             de Status</h3>
                         <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Dispersiones Totales por Sucursal (Dashboard) -->
+                <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; height: 320px; border: 1px solid var(--border-color);">
+                    <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1.5rem; display: flex; align-items: center;">
+                        <i class="fa-solid fa-chart-column" style="margin-right: 0.5rem; color: var(--success);"></i> Dispersiones Totales por Sucursal
+                    </h3>
+                    <div style="height: calc(100% - 40px);">
+                        <canvas id="dashboardDispersionesChart"></canvas>
                     </div>
                 </div>
             </section>

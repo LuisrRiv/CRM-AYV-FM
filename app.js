@@ -6,14 +6,8 @@ const viewSections = document.querySelectorAll('.view-section');
 
 navItems.forEach(item => {
     item.addEventListener('click', (e) => {
-        // Remove active class from all nav items and sections
-        navItems.forEach(nav => nav.classList.remove('active'));
-        viewSections.forEach(section => section.classList.remove('active'));
-        
-        // Add active class to clicked item and target section
-        item.classList.add('active');
         const targetId = item.getAttribute('data-target');
-        document.getElementById(targetId).classList.add('active');
+        switchView(targetId);
     });
 });
 
@@ -1285,8 +1279,6 @@ function updateCloserSummary() {
 
 // Function to update the Dispersions Chart (by Branch) with specific colors
 function updateDispersionesChart(totalsMap) {
-    if (!dispersionesChartInstance) return;
-
     const labels = Object.keys(totalsMap);
     const data = Object.values(totalsMap);
 
@@ -1308,10 +1300,19 @@ function updateDispersionesChart(totalsMap) {
 
     const backgroundColors = labels.map(label => branchColors[label] || '#94a3b8');
 
-    dispersionesChartInstance.data.labels = labels;
-    dispersionesChartInstance.data.datasets[0].data = data;
-    dispersionesChartInstance.data.datasets[0].backgroundColor = backgroundColors;
-    dispersionesChartInstance.update();
+    if (dispersionesChartInstance) {
+        dispersionesChartInstance.data.labels = labels;
+        dispersionesChartInstance.data.datasets[0].data = data;
+        dispersionesChartInstance.data.datasets[0].backgroundColor = backgroundColors;
+        dispersionesChartInstance.update();
+    }
+
+    if (dashboardDispersionesChartInstance) {
+        dashboardDispersionesChartInstance.data.labels = labels;
+        dashboardDispersionesChartInstance.data.datasets[0].data = data;
+        dashboardDispersionesChartInstance.data.datasets[0].backgroundColor = backgroundColors;
+        dashboardDispersionesChartInstance.update();
+    }
 }
 
 // ==========================================
@@ -1319,6 +1320,7 @@ function updateDispersionesChart(totalsMap) {
 let branchChartInstance = null;
 let statusChartInstance = null;
 let dispersionesChartInstance = null;
+let dashboardDispersionesChartInstance = null;
 
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
@@ -1386,47 +1388,54 @@ document.addEventListener('DOMContentLoaded', () => {
     updateDashboardCharts();
 
     // Dispersions Chart (Bar) - Performance per Closer
-    const ctxDisp = document.getElementById('dispersionesChart');
-    if (ctxDisp) {
-        dispersionesChartInstance = new Chart(ctxDisp, {
-            type: 'bar',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Monto Total ($)',
-                    data: [],
-                    backgroundColor: [], // Set dynamically in updateDispersionesChart
-                    borderRadius: 4,
-                    barThickness: 30
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: (context) => `Total: $${context.raw.toLocaleString('en-US')}`
-                        }
-                    }
-                },
-                scales: {
-                    y: { 
-                        beginAtZero: true, 
-                        grid: { color: 'rgba(128,128,128,0.1)' },
-                        ticks: { 
-                            color: '#64748b',
-                            callback: (value) => '$' + value.toLocaleString()
-                        }
-                    },
-                    x: { 
-                        grid: { display: false },
-                        ticks: { color: '#64748b' }
+    const getDispChartConfig = () => ({
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Monto Total ($)',
+                data: [],
+                backgroundColor: [],
+                borderRadius: 4,
+                barThickness: 30
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `Total: $${context.raw.toLocaleString('en-US')}`
                     }
                 }
+            },
+            scales: {
+                y: { 
+                    beginAtZero: true, 
+                    grid: { color: 'rgba(128,128,128,0.1)' },
+                    ticks: { 
+                        color: '#64748b',
+                        callback: (value) => '$' + value.toLocaleString()
+                    }
+                },
+                x: { 
+                    grid: { display: false },
+                    ticks: { color: '#64748b' }
+                }
             }
-        });
+        }
+    });
+
+    const ctxDisp = document.getElementById('dispersionesChart');
+    if (ctxDisp) {
+        dispersionesChartInstance = new Chart(ctxDisp, getDispChartConfig());
+    }
+
+    const ctxDashDisp = document.getElementById('dashboardDispersionesChart');
+    if (ctxDashDisp) {
+        dashboardDispersionesChartInstance = new Chart(ctxDashDisp, getDispChartConfig());
     }
 });
 
@@ -1635,7 +1644,7 @@ const allowedUsers = [
     { user: 'franco lozada', pass: 'Franco123', initials: 'FL', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads'] },
     { user: 'fabiola mendoza', pass: 'Fabiola123', initials: 'FM', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads'] },
     { user: 'fatima morales', pass: 'Fatima123', initials: 'FT', panels: ['kanban', 'leads', 'assets', 'chat'] },
-    { user: 'invitado', pass: 'invitado123', initials: 'IN', panels: ['dashboard', 'reportes', 'registroLeads'] }
+    { user: 'invitado', pass: 'invitado123', initials: 'IN', panels: ['dashboard', 'reportes'] }
 ];
 
 function switchView(targetId) {
@@ -1649,6 +1658,20 @@ function switchView(targetId) {
     
     const targetSection = document.getElementById(targetId);
     if(targetSection) targetSection.classList.add('active');
+    
+    // Forzar actualización visual/gráfica cuando la sección se vuelve visible
+    setTimeout(() => {
+        if (targetId === 'reportes') {
+            generateReport();
+        } else if (targetId === 'dispersiones') {
+            if (typeof updateCloserSummary === 'function') updateCloserSummary();
+        } else if (targetId === 'dashboard') {
+            if (typeof updateDashboardCharts === 'function') updateDashboardCharts();
+            if (typeof updateCloserSummary === 'function') updateCloserSummary();
+        } else if (targetId === 'registroLeads') {
+            if (typeof updateRegistroLeadsView === 'function') updateRegistroLeadsView();
+        }
+    }, 50);
 }
 
 function applyPermissions(user) {
@@ -1697,13 +1720,22 @@ function attemptLogin() {
         
         const loginScreen = document.getElementById('loginScreen');
         loginScreen.style.opacity = '0';
-        setTimeout(() => {
+        setTimeout(async () => {
             loginScreen.style.display = 'none';
             applyPermissions(validUser);
-            // Initialize Realtime and Permissions after login
+            
+            // Cargar todos los datos de las vistas tras el login exitoso
+            await fetchLeads();
+            await fetchTasks();
+            if(typeof fetchDispersiones === 'function') await fetchDispersiones();
+            await fetchChatMessages();
+            await generateReport();
+            await updateRegistroLeadsView();
+            
+            // Inicializar realtime listeners
             setupRealtimeListeners();
             setupChatRealtime();
-            fetchChatMessages();
+            if (typeof setupReportRealtime === 'function') setupReportRealtime();
             requestNotificationPermission();
         }, 300);
         
