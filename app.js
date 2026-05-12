@@ -215,28 +215,41 @@ let currentFullPeriod = '2026-05-W1';
 
 function getWeekRange(yearMonth, week) {
     const [year, month] = yearMonth.split('-').map(Number);
-    if (week === 'MONTH') {
-        const lastDay = new Date(year, month, 0).getDate();
-        return { start: `${yearMonth}-01`, end: `${yearMonth}-${lastDay}` };
-    }
-    
-    // Simple 7-day windows for weeks
-    const ranges = {
-        'W1': { s: 1, e: 7 },
-        'W2': { s: 8, e: 14 },
-        'W3': { s: 15, e: 21 },
-        'W4': { s: 22, e: 28 },
-        'W5': { s: 29, e: 31 }
-    };
-    
-    const r = ranges[week];
-    const lastDayOfMonth = new Date(year, month, 0).getDate();
-    const endDay = Math.min(r.e, lastDayOfMonth);
-    
     const pad = (n) => n.toString().padStart(2, '0');
-    return { 
-        start: `${yearMonth}-${pad(r.s)}`, 
-        end: `${yearMonth}-${pad(endDay)}` 
+    const formatDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    if (week === 'MONTH') {
+        // Para el resumen mensual, abarcamos desde la Semana 1 hasta la Semana 5
+        const w1 = getWeekRange(yearMonth, 'W1');
+        const w5 = getWeekRange(yearMonth, 'W5');
+        return { start: w1.start, end: w5.end };
+    }
+
+    // Encontrar el primer martes en o antes del día 1 del mes
+    // (La semana 1 comienza en el martes más cercano al inicio del mes)
+    const firstOfMonth = new Date(year, month - 1, 1);
+    const dayOfWeek = firstOfMonth.getDay(); // 0=Dom, 1=Lun, 2=Mar...
+    
+    // Calcular cuántos días retroceder hasta el martes anterior o igual
+    // Si el día 1 es martes (2), offset = 0
+    // Si el día 1 es miércoles (3), offset = 1 (retrocedemos 1 día al martes)
+    // Si el día 1 es lunes (1), offset = 6 (retrocedemos 6 días al martes anterior)
+    const offset = (dayOfWeek - 2 + 7) % 7;
+    
+    const week1Start = new Date(firstOfMonth);
+    week1Start.setDate(week1Start.getDate() - offset);
+
+    // Cada semana dura 7 días: martes a lunes
+    const weekNum = parseInt(week.replace('W', '')) - 1; // 0-indexed
+    const weekStart = new Date(week1Start);
+    weekStart.setDate(weekStart.getDate() + (weekNum * 7));
+    
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6); // Lunes (6 días después del martes)
+
+    return {
+        start: formatDate(weekStart),
+        end: formatDate(weekEnd)
     };
 }
 
@@ -245,13 +258,46 @@ async function updateReportView() {
     const week = document.getElementById('selectWeek').value;
     currentFullPeriod = `${month}-${week}`;
     
+    // Actualizar los labels de las semanas con fechas reales
+    updateWeekLabels(month);
+    
     const title = document.getElementById('manualEntryTitle');
     if (title) {
         const monthName = document.getElementById('selectMonth').selectedOptions[0].text;
-        title.innerText = week === 'MONTH' ? `Resumen Consolidado - ${monthName}` : `Entrada de Datos Manuales - ${week.replace('W', 'Semana ')} (${monthName})`;
+        if (week === 'MONTH') {
+            title.innerText = `Resumen Consolidado - ${monthName}`;
+        } else {
+            const range = getWeekRange(month, week);
+            const formatLabel = (dateStr) => {
+                const d = new Date(dateStr + 'T12:00:00');
+                return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+            };
+            title.innerText = `Entrada de Datos Manuales - ${week.replace('W', 'Semana ')} (${formatLabel(range.start)} - ${formatLabel(range.end)})`;
+        }
     }
 
     generateReport();
+}
+
+function updateWeekLabels(yearMonth) {
+    const select = document.getElementById('selectWeek');
+    if (!select) return;
+    const currentVal = select.value;
+    
+    const formatLabel = (dateStr) => {
+        const d = new Date(dateStr + 'T12:00:00');
+        return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+    };
+    
+    for (let i = 1; i <= 5; i++) {
+        const option = select.querySelector(`option[value="W${i}"]`);
+        if (option) {
+            const range = getWeekRange(yearMonth, `W${i}`);
+            option.textContent = `Semana ${i} (${formatLabel(range.start)} - ${formatLabel(range.end)})`;
+        }
+    }
+    
+    select.value = currentVal;
 }
 
 async function fetchManualReportData() {
@@ -1627,6 +1673,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await fetchTasks();
         if(typeof fetchDispersiones === 'function') await fetchDispersiones();
         await fetchChatMessages();
+        updateWeekLabels(document.getElementById('selectMonth')?.value || '2026-05');
         await generateReport();
         await updateRegistroLeadsView();
         setupRealtimeListeners();
