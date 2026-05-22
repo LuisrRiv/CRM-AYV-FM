@@ -77,6 +77,9 @@
             <a class="nav-item" data-target="registroLeads">
                 <i class="fa-solid fa-address-book"></i> Registro de Leads
             </a>
+            <a class="nav-item" data-target="llamadas">
+                <i class="fa-solid fa-phone"></i> Registro de Llamadas
+            </a>
         </nav>
     </aside>
 
@@ -541,6 +544,87 @@
                 </div>
             </section>
 
+            <!-- Llamadas View -->
+            <section id="llamadas" class="view-section">
+                <div class="flex justify-between items-center mb-4">
+                    <h1 class="text-2xl">Registro de Llamadas del Día</h1>
+                    <div class="flex gap-2 items-center">
+                        <!-- Date Filter -->
+                        <div class="flex items-center gap-2" style="background: var(--bg-panel); padding: 0.25rem 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                            <i class="fa-solid fa-calendar-day" style="color: var(--text-secondary); font-size: 0.8rem;"></i>
+                            <select id="llamadasDateFilter" onchange="applyLlamadasFilter()" 
+                                style="background: transparent; border: none; color: var(--text-primary); font-size: 0.85rem; outline: none; cursor: pointer; padding: 0.25rem;">
+                                <option value="today" selected>Hoy</option>
+                                <option value="week">Esta Semana</option>
+                                <option value="all">Historial Completo</option>
+                            </select>
+                        </div>
+                        <button class="btn" onclick="openNewLlamadaPanel()"><i class="fa-solid fa-phone"></i> Registrar Llamada</button>
+                    </div>
+                </div>
+
+                <!-- Métricas Totales por Usuario -->
+                <div class="flex gap-4 mb-4" id="llamadasSummaryContainer" style="flex-wrap: wrap;">
+                    <!-- Tarjeta Admin -->
+                    <div style="flex: 1; min-width: 250px; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 1rem; box-shadow: var(--shadow-sm);">
+                        <div class="avatar" style="width: 48px; height: 48px; background: var(--accent-primary); color: #1e293b; font-size: 1.2rem; font-weight: 700;">AD</div>
+                        <div style="flex: 1;">
+                            <h3 style="color: var(--text-primary); font-size: 0.95rem; font-weight: 600; margin-bottom: 0.25rem;">Admin</h3>
+                            <p style="font-size: 0.8rem; color: var(--text-secondary);">Llamadas: <strong id="callsCount-adminlr" style="color: var(--text-primary)">0</strong> | Citas: <strong id="citasCount-adminlr" style="color: var(--success)">0</strong></p>
+                            <div style="margin-top: 0.5rem; height: 6px; background: var(--bg-dark); border-radius: 3px; overflow: hidden; width: 100%;">
+                                <div id="conversionBar-adminlr" style="width: 0%; height: 100%; background: var(--success); transition: width 0.3s;"></div>
+                            </div>
+                            <span id="conversionRate-adminlr" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; display: block; font-weight: 500;">Conversión: 0%</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Tarjeta Franco -->
+                    <div style="flex: 1; min-width: 250px; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 1rem; box-shadow: var(--shadow-sm);">
+                        <div class="avatar" style="width: 48px; height: 48px; background: #6366f1; color: white; font-size: 1.2rem; font-weight: 700;">FL</div>
+                        <div style="flex: 1;">
+                            <h3 style="color: var(--text-primary); font-size: 0.95rem; font-weight: 600; margin-bottom: 0.25rem;">Franco Lozada</h3>
+                            <p style="font-size: 0.8rem; color: var(--text-secondary);">Llamadas: <strong id="callsCount-franco" style="color: var(--text-primary)">0</strong> | Citas: <strong id="citasCount-franco" style="color: var(--success)">0</strong></p>
+                            <div style="margin-top: 0.5rem; height: 6px; background: var(--bg-dark); border-radius: 3px; overflow: hidden; width: 100%;">
+                                <div id="conversionBar-franco" style="width: 0%; height: 100%; background: #6366f1; transition: width 0.3s;"></div>
+                            </div>
+                            <span id="conversionRate-franco" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; display: block; font-weight: 500;">Conversión: 0%</span>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta Fabiola -->
+                    <div style="flex: 1; min-width: 250px; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 1rem; box-shadow: var(--shadow-sm);">
+                        <div class="avatar" style="width: 48px; height: 48px; background: #ec4899; color: white; font-size: 1.2rem; font-weight: 700;">FM</div>
+                        <div style="flex: 1;">
+                            <h3 style="color: var(--text-primary); font-size: 0.95rem; font-weight: 600; margin-bottom: 0.25rem;">Fabiola Mendoza</h3>
+                            <p style="font-size: 0.8rem; color: var(--text-secondary);">Llamadas: <strong id="callsCount-fabiola" style="color: var(--text-primary)">0</strong> | Citas: <strong id="citasCount-fabiola" style="color: var(--success)">0</strong></p>
+                            <div style="margin-top: 0.5rem; height: 6px; background: var(--bg-dark); border-radius: 3px; overflow: hidden; width: 100%;">
+                                <div id="conversionBar-fabiola" style="width: 0%; height: 100%; background: #ec4899; transition: width 0.3s;"></div>
+                            </div>
+                            <span id="conversionRate-fabiola" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; display: block; font-weight: 500;">Conversión: 0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="overflow-x: auto; border-radius: 0.75rem; box-shadow: var(--shadow-md); border: 1px solid var(--border-color);">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha / Hora</th>
+                                <th>Agente</th>
+                                <th>Número Marcado</th>
+                                <th>Sucursal</th>
+                                <th>Observaciones</th>
+                                <th>Cita Generada</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="llamadasTableBody">
+                            <!-- Llenado dinámicamente desde Supabase -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
         </div>
     </main>
 
@@ -714,6 +798,67 @@
                     style="flex: 1; border-color: var(--danger); color: var(--danger); display: none;"
                     id="btnDeleteTask" onclick="deleteCurrentTask()">Eliminar</button>
                 <button class="btn btn-outline" style="flex: 1;" onclick="closeTaskPanel()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide-over Panel (Llamadas) -->
+    <div class="slide-over" id="llamadasPanel">
+        <div class="slide-header">
+            <h2 class="text-xl" id="llamadasPanelTitle">Registrar Llamada</h2>
+            <button class="close-btn" onclick="closeLlamadasPanel()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="slide-content">
+            <input type="hidden" id="llamadaIdInput">
+            
+            <div class="form-group">
+                <label>Usuario / Agente</label>
+                <select class="form-control" id="llamadaUsuarioInput">
+                    <option value="adminlr">adminlr (Admin)</option>
+                    <option value="franco lozada">franco lozada</option>
+                    <option value="fabiola mendoza">fabiola mendoza</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Número Marcado</label>
+                <input type="text" class="form-control" id="llamadaNumeroInput" placeholder="Ej. 2281234567">
+            </div>
+
+            <div class="form-group">
+                <label>Sucursal</label>
+                <select class="form-control" id="llamadaSucursalInput">
+                    <option value="" disabled selected>Selecciona una sucursal</option>
+                    <option value="XALAPA 20 NOV">XALAPA 20 NOV</option>
+                    <option value="XALAPA ARAUCARIAS">XALAPA ARAUCARIAS</option>
+                    <option value="VERACRUZ">VERACRUZ</option>
+                    <option value="ZAPOPAN">ZAPOPAN</option>
+                    <option value="MONTERREY CENTRO">MONTERREY CENTRO</option>
+                    <option value="MONTERREY TERRANOVA">MONTERREY TERRANOVA</option>
+                    <option value="MONTERREY MOVIL">MONTERREY MOVIL</option>
+                    <option value="PUEBLA ANZURES">PUEBLA ANZURES</option>
+                    <option value="PUEBLA CHOLULA">PUEBLA CHOLULA</option>
+                    <option value="QUERETARO">QUERETARO</option>
+                    <option value="QUERETARO MOVIL">QUERETARO MOVIL</option>
+                    <option value="GUADALAJARA MOVIL">GUADALAJARA MOVIL</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="display: flex; align-items: center; gap: 0.75rem; margin-top: 1.5rem; margin-bottom: 1.5rem;">
+                <input type="checkbox" id="llamadaCitaInput" style="width: 18px; height: 18px; accent-color: var(--accent-primary); cursor: pointer;">
+                <label for="llamadaCitaInput" style="margin-bottom: 0; cursor: pointer; user-select: none; font-weight: 500;">¿Se generó Cita de esta llamada?</label>
+            </div>
+
+            <div class="form-group">
+                <label>Observaciones de la Llamada</label>
+                <textarea class="form-control" id="llamadaObsInput" rows="4" placeholder="Detalla qué ocurrió durante la llamada..."></textarea>
+            </div>
+
+            <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                <button class="btn" style="flex: 2;" onclick="saveLlamada()">Guardar Llamada</button>
+                <button class="btn btn-outline" style="flex: 1;" onclick="closeLlamadasPanel()">Cancelar</button>
+                <button class="btn" style="flex: 1; background: var(--danger); border-color: var(--danger); display: none;"
+                    id="btnDeleteLlamada" onclick="deleteCurrentLlamada()">Eliminar</button>
             </div>
         </div>
     </div>

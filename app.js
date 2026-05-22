@@ -960,6 +960,7 @@ document.addEventListener('keydown', (e) => {
         if(typeof closeDispersionPanel === 'function') closeDispersionPanel();
         if(typeof closeMediaViewer === 'function') closeMediaViewer();
         if(typeof closeTaskPanel === 'function') closeTaskPanel();
+        if(typeof closeLlamadasPanel === 'function') closeLlamadasPanel();
     }
 });
 
@@ -1676,9 +1677,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateWeekLabels(document.getElementById('selectMonth')?.value || '2026-05');
         await generateReport();
         await updateRegistroLeadsView();
+        if(typeof fetchLlamadas === 'function') await fetchLlamadas();
         setupRealtimeListeners();
         setupChatRealtime();
         setupReportRealtime();
+        if(typeof setupLlamadasRealtime === 'function') setupLlamadasRealtime();
         requestNotificationPermission();
     }
 });
@@ -1687,9 +1690,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Authentication Logic
 // ==========================================
 const allowedUsers = [
-    { user: 'adminlr', pass: 'AdminLR123', initials: 'AD', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads'] },
-    { user: 'franco lozada', pass: 'Franco123', initials: 'FL', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads'] },
-    { user: 'fabiola mendoza', pass: 'Fabiola123', initials: 'FM', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads'] },
+    { user: 'adminlr', pass: 'AdminLR123', initials: 'AD', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads', 'llamadas'] },
+    { user: 'franco lozada', pass: 'Franco123', initials: 'FL', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas'] },
+    { user: 'fabiola mendoza', pass: 'Fabiola123', initials: 'FM', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas'] },
     { user: 'fatima morales', pass: 'Fatima123', initials: 'FT', panels: ['kanban', 'leads', 'assets', 'chat'] },
     { user: 'invitado', pass: 'invitado123', initials: 'IN', panels: ['dashboard', 'reportes'] }
 ];
@@ -1717,6 +1720,8 @@ function switchView(targetId) {
             if (typeof updateCloserSummary === 'function') updateCloserSummary();
         } else if (targetId === 'registroLeads') {
             if (typeof updateRegistroLeadsView === 'function') updateRegistroLeadsView();
+        } else if (targetId === 'llamadas') {
+            if (typeof fetchLlamadas === 'function') fetchLlamadas();
         }
     }, 50);
 }
@@ -1778,11 +1783,13 @@ function attemptLogin() {
             await fetchChatMessages();
             await generateReport();
             await updateRegistroLeadsView();
+            if(typeof fetchLlamadas === 'function') await fetchLlamadas();
             
             // Inicializar realtime listeners
             setupRealtimeListeners();
             setupChatRealtime();
             if (typeof setupReportRealtime === 'function') setupReportRealtime();
+            if (typeof setupLlamadasRealtime === 'function') setupLlamadasRealtime();
             requestNotificationPermission();
         }, 300);
         
@@ -1799,6 +1806,248 @@ function logout() {
     document.getElementById('loginUser').value = '';
     document.getElementById('loginPass').value = '';
     triggerNotification('Sesión Cerrada', 'Has salido del sistema.', 'warning');
+}
+
+// ==========================================
+// Registro de Llamadas Logic (Supabase CRUD & Metrics)
+// ==========================================
+let currentLlamadaId = null;
+
+function openNewLlamadaPanel() {
+    currentLlamadaId = null;
+    document.getElementById('llamadasPanelTitle').innerText = "Registrar Llamada";
+    document.getElementById('llamadaIdInput').value = "";
+    
+    // Autoseleccionar usuario logueado por defecto si existe en la lista
+    const loggedInUser = localStorage.getItem('crm-logged-in') || 'adminlr';
+    const userSelect = document.getElementById('llamadaUsuarioInput');
+    if (userSelect) {
+        userSelect.value = loggedInUser;
+    }
+    
+    document.getElementById('llamadaNumeroInput').value = "";
+    document.getElementById('llamadaSucursalInput').value = "";
+    document.getElementById('llamadaCitaInput').checked = false;
+    document.getElementById('llamadaObsInput').value = "";
+    
+    const btnDel = document.getElementById('btnDeleteLlamada');
+    if (btnDel) btnDel.style.display = 'none';
+    
+    document.getElementById('llamadasPanel').classList.add('open');
+}
+
+function openLlamadaPanel(call) {
+    currentLlamadaId = call.id;
+    document.getElementById('llamadasPanelTitle').innerText = "Editar Llamada";
+    document.getElementById('llamadaIdInput').value = call.id;
+    document.getElementById('llamadaUsuarioInput').value = call.usuario;
+    document.getElementById('llamadaNumeroInput').value = call.numero;
+    document.getElementById('llamadaSucursalInput').value = call.sucursal;
+    document.getElementById('llamadaCitaInput').checked = call.cita_generada;
+    document.getElementById('llamadaObsInput').value = call.observaciones || "";
+    
+    const btnDel = document.getElementById('btnDeleteLlamada');
+    if (btnDel) btnDel.style.display = 'block';
+    
+    document.getElementById('llamadasPanel').classList.add('open');
+}
+
+function closeLlamadasPanel() {
+    document.getElementById('llamadasPanel').classList.remove('open');
+}
+
+async function fetchLlamadas() {
+    const filter = document.getElementById('llamadasDateFilter')?.value || 'today';
+    
+    const { data, error } = await supabaseClient
+        .from('llamadas')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching llamadas:', error);
+        return;
+    }
+    
+    let filteredData = data;
+    const now = new Date();
+    
+    if (filter === 'today') {
+        const todayStr = now.toLocaleDateString('en-GB'); // "DD/MM/YYYY"
+        filteredData = data.filter(call => {
+            const callDate = new Date(call.created_at);
+            return callDate.toLocaleDateString('en-GB') === todayStr;
+        });
+    } else if (filter === 'week') {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(now.getDate() - 7);
+        oneWeekAgo.setHours(0,0,0,0);
+        filteredData = data.filter(call => {
+            const callDate = new Date(call.created_at);
+            return callDate >= oneWeekAgo;
+        });
+    }
+    
+    renderLlamadas(filteredData);
+    updateLlamadasSummary(filteredData);
+}
+
+function renderLlamadas(data) {
+    const tbody = document.getElementById('llamadasTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    data.forEach(call => {
+        const tr = document.createElement('tr');
+        tr.dataset.id = call.id;
+        tr.onclick = () => openLlamadaPanel(call);
+
+        const localDate = new Date(call.created_at).toLocaleString('es-MX', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        const badgeClass = call.cita_generada ? 'badge dispersado' : 'badge rechazado';
+        const badgeText = call.cita_generada ? 'SÍ' : 'NO';
+        
+        let shortObs = call.observaciones || '';
+        if(shortObs.length > 50) shortObs = shortObs.substring(0, 50) + "...";
+
+        tr.innerHTML = `
+            <td>${localDate}</td>
+            <td><span style="font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); background: var(--bg-dark); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">${call.usuario}</span></td>
+            <td class="font-medium">${call.numero}</td>
+            <td>${call.sucursal}</td>
+            <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${call.observaciones || ''}">${shortObs}</td>
+            <td><span class="${badgeClass}">${badgeText}</span></td>
+            <td>
+                <button onclick="event.stopPropagation(); deleteLlamada('${call.id}')" style="color: var(--danger); background: none; border: none; cursor: pointer; padding: 0.25rem;">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function updateLlamadasSummary(calls) {
+    const users = {
+        'adminlr': { calls: 0, citas: 0, suffix: 'adminlr' },
+        'franco': { calls: 0, citas: 0, suffix: 'franco' },
+        'fabiola': { calls: 0, citas: 0, suffix: 'fabiola' }
+    };
+
+    calls.forEach(call => {
+        const u = (call.usuario || '').toLowerCase().trim();
+        if (u.includes('admin')) {
+            users.adminlr.calls++;
+            if (call.cita_generada) users.adminlr.citas++;
+        } else if (u.includes('franco')) {
+            users.franco.calls++;
+            if (call.cita_generada) users.franco.citas++;
+        } else if (u.includes('fabiola')) {
+            users.fabiola.calls++;
+            if (call.cita_generada) users.fabiola.citas++;
+        }
+    });
+
+    Object.keys(users).forEach(key => {
+        const uData = users[key];
+        const callsEl = document.getElementById(`callsCount-${uData.suffix}`);
+        const citasEl = document.getElementById(`citasCount-${uData.suffix}`);
+        const rateEl = document.getElementById(`conversionRate-${uData.suffix}`);
+        const barEl = document.getElementById(`conversionBar-${uData.suffix}`);
+
+        if (callsEl) callsEl.innerText = uData.calls;
+        if (citasEl) citasEl.innerText = uData.citas;
+        
+        const rate = uData.calls > 0 ? Math.round((uData.citas / uData.calls) * 100) : 0;
+        if (rateEl) rateEl.innerText = `Conversión: ${rate}%`;
+        if (barEl) barEl.style.width = `${rate}%`;
+    });
+}
+
+function applyLlamadasFilter() {
+    fetchLlamadas();
+}
+
+async function saveLlamada() {
+    const user = document.getElementById('llamadaUsuarioInput').value;
+    const numero = document.getElementById('llamadaNumeroInput').value.trim();
+    const sucursal = document.getElementById('llamadaSucursalInput').value;
+    const citaGenerada = document.getElementById('llamadaCitaInput').checked;
+    const obs = document.getElementById('llamadaObsInput').value.trim();
+
+    if (!user || !numero || !sucursal) {
+        triggerNotification('Error', 'Por favor completa todos los campos obligatorios', 'warning');
+        return;
+    }
+
+    const callData = {
+        usuario: user,
+        numero: numero,
+        sucursal: sucursal,
+        cita_generada: citaGenerada,
+        observaciones: obs
+    };
+
+    if (currentLlamadaId) {
+        const { error } = await supabaseClient.from('llamadas').update(callData).eq('id', currentLlamadaId);
+        if (!error) {
+            triggerNotification('Éxito', 'Llamada actualizada correctamente', 'success');
+        } else {
+            console.error(error);
+            triggerNotification('Error', 'No se pudo actualizar la llamada', 'warning');
+        }
+    } else {
+        const { error } = await supabaseClient.from('llamadas').insert([callData]);
+        if (!error) {
+            triggerNotification('Éxito', 'Llamada registrada correctamente', 'success');
+        } else {
+            console.error(error);
+            triggerNotification('Error', 'No se pudo registrar la llamada', 'warning');
+        }
+    }
+
+    await fetchLlamadas();
+    closeLlamadasPanel();
+}
+
+async function deleteCurrentLlamada() {
+    if (currentLlamadaId && confirm('¿Estás seguro de que deseas eliminar esta llamada?')) {
+        const { error } = await supabaseClient.from('llamadas').delete().eq('id', currentLlamadaId);
+        if (!error) {
+            triggerNotification('Éxito', 'Llamada eliminada', 'success');
+            await fetchLlamadas();
+            closeLlamadasPanel();
+        } else {
+            triggerNotification('Error', 'No se pudo eliminar la llamada', 'warning');
+        }
+    }
+}
+
+async function deleteLlamada(id) {
+    if (confirm('¿Estás seguro de que deseas eliminar esta llamada?')) {
+        const { error } = await supabaseClient.from('llamadas').delete().eq('id', id);
+        if (!error) {
+            triggerNotification('Éxito', 'Llamada eliminada', 'success');
+            await fetchLlamadas();
+        } else {
+            triggerNotification('Error', 'No se pudo eliminar la llamada', 'warning');
+        }
+    }
+}
+
+function setupLlamadasRealtime() {
+    supabaseClient
+        .channel('llamadas-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'llamadas' }, () => {
+            fetchLlamadas();
+        })
+        .subscribe();
 }
 
 // ==========================================
