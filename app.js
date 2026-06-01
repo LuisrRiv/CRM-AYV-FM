@@ -1266,6 +1266,7 @@ function applyGlobalFilter() {
     }
     
     if (typeof updateDashboardCharts === 'function') updateDashboardCharts();
+    if (typeof renderDemeritosView === 'function') renderDemeritosView();
 }
 
 // Function to update Closer summaries
@@ -2182,14 +2183,22 @@ async function renderDemeritosView() {
 
         if (error) throw error;
 
+        const filterEl = document.getElementById('globalMonthFilter');
+        const filterVal = filterEl ? filterEl.value : 'all';
+        
+        let filteredData = data;
+        if (filterVal !== 'all') {
+            filteredData = data.filter(lead => lead.created_at && lead.created_at.startsWith(filterVal));
+        }
+
         const tbody = document.getElementById('demeritosTableBody');
         if (!tbody) return;
         tbody.innerHTML = '';
 
-        const citas = data.filter(l => l.etapa === 'CITA');
+        const citas = filteredData.filter(l => l.etapa === 'CITA');
         
         if(citas.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 2rem;">No hay citas pendientes de evaluación.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 2rem;">No hay citas pendientes de evaluación para este mes.</td></tr>`;
         }
 
         citas.forEach(lead => {
@@ -2217,7 +2226,7 @@ async function renderDemeritosView() {
         if(!podiumContainer) return;
         
         const stats = {};
-        data.forEach(lead => {
+        filteredData.forEach(lead => {
             const agente = (lead.creado_por || '').toLowerCase().trim();
             if(!agente) return;
             if(!stats[agente]) stats[agente] = { asistidas: 0, noAsistidas: 0, total: 0 };
