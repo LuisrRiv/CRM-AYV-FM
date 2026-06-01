@@ -2173,7 +2173,7 @@ async function exportLeadsToExcel() {
 // ==========================================
 document.addEventListener('click', function(e) {
     if(isReadOnlyUser()) {
-        const isModifyingBtn = e.target.closest('button[onclick^="openNew"], button[onclick^="delete"], button[onclick^="save"], .btn[onclick="document.getElementById(\\'assetUpload\\').click()"], button[type="submit"], tr[onclick]');
+        const isModifyingBtn = e.target.closest(`button[onclick^="openNew"], button[onclick^="delete"], button[onclick^="save"], .btn[onclick="document.getElementById('assetUpload').click()"], button[type="submit"], tr[onclick]`);
         const isDeleteIconBtn = e.target.closest('.data-table td button');
         if(isModifyingBtn || isDeleteIconBtn) {
             e.preventDefault();
