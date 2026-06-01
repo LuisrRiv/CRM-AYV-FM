@@ -80,6 +80,9 @@
             <a class="nav-item" data-target="llamadas">
                 <i class="fa-solid fa-phone"></i> Registro de Llamadas
             </a>
+            <a class="nav-item" data-target="demeritos">
+                <i class="fa-solid fa-clipboard-check"></i> Asistencias y Deméritos
+            </a>
         </nav>
     </aside>
 
@@ -653,6 +656,44 @@
                 </div>
             </section>
 
+            <!-- Deméritos y Asistencias View -->
+            <section id="demeritos" class="view-section">
+                <div class="flex justify-between items-center mb-4">
+                    <h1 class="text-2xl">Asistencias y Deméritos</h1>
+                    <div class="flex gap-2">
+                        <button class="btn" onclick="renderDemeritosView()"><i class="fa-solid fa-sync"></i> Actualizar</button>
+                    </div>
+                </div>
+
+                <!-- Ranking Podio -->
+                <div class="flex gap-4 mb-4" id="demeritosPodium" style="flex-wrap: wrap;">
+                    <!-- Se llenará dinámicamente con JS -->
+                </div>
+
+                <!-- Tabla de Evaluación -->
+                <div style="overflow-x: auto; border-radius: 0.75rem; box-shadow: var(--shadow-md); border: 1px solid var(--border-color); background: var(--bg-panel);">
+                    <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color);">
+                        <h3 style="font-size: 1rem; color: var(--text-primary); font-weight: 600;">Citas Pendientes de Evaluación</h3>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary);">Leads que actualmente están en status "CITA". Confirma si asistieron a la sucursal.</p>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha de Agendado</th>
+                                <th>Sucursal</th>
+                                <th>Cliente</th>
+                                <th>Vehículo</th>
+                                <th>Agente</th>
+                                <th style="width: 250px;">Evaluación de Asistencia</th>
+                            </tr>
+                        </thead>
+                        <tbody id="demeritosTableBody">
+                            <!-- Dinámico -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
         </div>
     </main>
 
@@ -908,7 +949,7 @@
         <h3 id="mediaViewerTitle" style="color: white; margin-top: 1rem; font-weight: 500; font-size: 1.25rem;"></h3>
     </div>
 
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
 </body>
 
 </html>

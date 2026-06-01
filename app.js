@@ -1690,12 +1690,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Authentication Logic
 // ==========================================
 const allowedUsers = [
-    { user: 'adminlr', pass: 'AdminLR123', initials: 'AD', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads', 'llamadas'] },
-    { user: 'franco lozada', pass: 'Franco123', initials: 'FL', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas'] },
+    { user: 'adminlr', pass: 'AdminLR123', initials: 'AD', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads', 'llamadas', 'demeritos'] },
+    { user: 'franco lozada', pass: 'Franco123', initials: 'FL', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos'] },
     { user: 'fabiola mendoza', pass: 'Fabiola123', initials: 'FM', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas'], readOnly: true },
     { user: 'fatima morales', pass: 'Fatima123', initials: 'FT', panels: ['kanban', 'leads', 'assets', 'chat'], readOnly: true },
-    { user: 'marcela ramirez', pass: 'Marcela123', initials: 'MR', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas'] },
-    { user: 'martin orduña', pass: 'Martin123', initials: 'MO', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas'] },
+    { user: 'marcela ramirez', pass: 'Marcela123', initials: 'MR', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos'] },
+    { user: 'martin orduña', pass: 'Martin123', initials: 'MO', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos'] },
     { user: 'invitado', pass: 'invitado123', initials: 'IN', panels: ['dashboard', 'reportes'], readOnly: true }
 ];
 
@@ -1728,6 +1728,8 @@ function switchView(targetId) {
             if (typeof updateCloserSummary === 'function') updateCloserSummary();
         } else if (targetId === 'registroLeads') {
             if (typeof updateRegistroLeadsView === 'function') updateRegistroLeadsView();
+        } else if (targetId === 'demeritos') {
+            if (typeof renderDemeritosView === 'function') renderDemeritosView();
         } else if (targetId === 'llamadas') {
             if (typeof fetchLlamadas === 'function') fetchLlamadas();
         }
@@ -2165,6 +2167,125 @@ async function exportLeadsToExcel() {
             btn.disabled = false;
             btn.innerHTML = '<i class="fa-solid fa-file-excel"></i> Exportar Excel';
         }
+    }
+}
+
+// ==========================================
+// Deméritos y Asistencias Logic
+// ==========================================
+async function renderDemeritosView() {
+    try {
+        const { data, error } = await supabaseClient
+            .from('leads')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const tbody = document.getElementById('demeritosTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        const citas = data.filter(l => l.etapa === 'CITA');
+        
+        if(citas.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 2rem;">No hay citas pendientes de evaluación.</td></tr>`;
+        }
+
+        citas.forEach(lead => {
+            const tr = document.createElement('tr');
+            const dDate = new Date(lead.created_at).toLocaleDateString('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' });
+            
+            tr.innerHTML = `
+                <td>${dDate}</td>
+                <td>${lead.sucursal || ''}</td>
+                <td class="font-medium">${lead.nombre || ''}</td>
+                <td>${lead.vehiculo || ''}</td>
+                <td><span style="font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); background: var(--bg-dark); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">${lead.creado_por || ''}</span></td>
+                <td>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn" style="background: var(--success); padding: 0.25rem 0.5rem; font-size: 0.8rem;" onclick="updateAsistencia('${lead.id}', 'EN PROCESO')"><i class="fa-solid fa-check"></i> Sí Asistió</button>
+                        <button class="btn btn-outline" style="border-color: var(--danger); color: var(--danger); padding: 0.25rem 0.5rem; font-size: 0.8rem;" onclick="updateAsistencia('${lead.id}', 'NO ASISTIO')"><i class="fa-solid fa-xmark"></i> No Asistió</button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // 2. Render Podium
+        const podiumContainer = document.getElementById('demeritosPodium');
+        if(!podiumContainer) return;
+        
+        const stats = {};
+        data.forEach(lead => {
+            const agente = (lead.creado_por || '').toLowerCase().trim();
+            if(!agente) return;
+            if(!stats[agente]) stats[agente] = { asistidas: 0, noAsistidas: 0, total: 0 };
+            
+            if(['EN PROCESO', 'DISPERSADO', 'DETENIDO'].includes(lead.etapa)) {
+                stats[agente].asistidas++;
+                stats[agente].total++;
+            } else if (lead.etapa === 'NO ASISTIO') {
+                stats[agente].noAsistidas++;
+                stats[agente].total++;
+            }
+        });
+
+        const sortedAgents = Object.keys(stats).sort((a, b) => stats[b].asistidas - stats[a].asistidas).slice(0, 3);
+
+        podiumContainer.innerHTML = '';
+        const colors = ['#f59e0b', '#94a3b8', '#b45309']; // Oro, Plata, Bronce
+        
+        if(sortedAgents.length === 0) {
+            podiumContainer.innerHTML = '<p style="color: var(--text-secondary); width: 100%;">Aún no hay datos suficientes para el podio.</p>';
+        }
+
+        sortedAgents.forEach((agente, index) => {
+            const d = stats[agente];
+            const div = document.createElement('div');
+            div.style.cssText = `flex: 1; min-width: 200px; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); display: flex; align-items: center; gap: 1rem; position: relative; overflow: hidden;`;
+            
+            const ribbon = document.createElement('div');
+            ribbon.style.cssText = `position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: ${colors[index] || 'var(--accent-primary)'};`;
+            div.appendChild(ribbon);
+
+            div.innerHTML += `
+                <div style="width: 48px; height: 48px; border-radius: 50%; background: ${colors[index] || 'var(--accent-primary)'}20; color: ${colors[index] || 'var(--accent-primary)'}; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold;">
+                    #${index + 1}
+                </div>
+                <div style="flex: 1;">
+                    <h3 style="color: var(--text-primary); font-size: 1rem; font-weight: 600; text-transform: capitalize; margin-bottom: 0.25rem;">${agente}</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary);">Citas Asistidas: <strong style="color: var(--success)">${d.asistidas}</strong></p>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary);">Deméritos: <strong style="color: var(--danger)">${d.noAsistidas}</strong></p>
+                </div>
+            `;
+            podiumContainer.appendChild(div);
+        });
+
+    } catch (err) {
+        console.error('Error renderDemeritosView:', err);
+    }
+}
+
+async function updateAsistencia(leadId, nuevaEtapa) {
+    if(!confirm(`¿Estás seguro de marcar esta cita como ${nuevaEtapa === 'EN PROCESO' ? 'SÍ ASISTIÓ' : 'NO ASISTIÓ'}?`)) return;
+    
+    try {
+        const { error } = await supabaseClient
+            .from('leads')
+            .update({ etapa: nuevaEtapa, updated_at: new Date().toISOString() })
+            .eq('id', leadId);
+
+        if (error) throw error;
+        
+        triggerNotification('Evaluación guardada', 'La etapa del lead ha sido actualizada.', 'success');
+        
+        renderDemeritosView();
+        if(typeof fetchLeads === 'function') fetchLeads();
+        
+    } catch(err) {
+        console.error('Error updateAsistencia:', err);
+        triggerNotification('Error', 'No se pudo guardar la evaluación.', 'danger');
     }
 }
 
