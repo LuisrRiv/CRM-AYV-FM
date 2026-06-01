@@ -198,6 +198,8 @@
                                 <option value="franco lozada">franco lozada</option>
                                 <option value="fabiola mendoza">fabiola mendoza</option>
                                 <option value="fatima morales">fatima morales</option>
+                                <option value="marcela ramirez">marcela ramirez</option>
+                                <option value="martin orduña">martin orduña</option>
                             </select>
                         </div>
                         <button class="btn" onclick="openNewLeadPanel()"><i class="fa-solid fa-plus"></i> Nuevo
@@ -603,6 +605,32 @@
                             <span id="conversionRate-fabiola" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; display: block; font-weight: 500;">Conversión: 0%</span>
                         </div>
                     </div>
+
+                    <!-- Tarjeta Marcela -->
+                    <div style="flex: 1; min-width: 250px; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 1rem; box-shadow: var(--shadow-sm);">
+                        <div class="avatar" style="width: 48px; height: 48px; background: #10b981; color: white; font-size: 1.2rem; font-weight: 700;">MR</div>
+                        <div style="flex: 1;">
+                            <h3 style="color: var(--text-primary); font-size: 0.95rem; font-weight: 600; margin-bottom: 0.25rem;">Marcela Ramirez</h3>
+                            <p style="font-size: 0.8rem; color: var(--text-secondary);">Llamadas: <strong id="callsCount-marcela" style="color: var(--text-primary)">0</strong> | Citas: <strong id="citasCount-marcela" style="color: var(--success)">0</strong></p>
+                            <div style="margin-top: 0.5rem; height: 6px; background: var(--bg-dark); border-radius: 3px; overflow: hidden; width: 100%;">
+                                <div id="conversionBar-marcela" style="width: 0%; height: 100%; background: #10b981; transition: width 0.3s;"></div>
+                            </div>
+                            <span id="conversionRate-marcela" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; display: block; font-weight: 500;">Conversión: 0%</span>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta Martin -->
+                    <div style="flex: 1; min-width: 250px; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 1rem; box-shadow: var(--shadow-sm);">
+                        <div class="avatar" style="width: 48px; height: 48px; background: #f59e0b; color: white; font-size: 1.2rem; font-weight: 700;">MO</div>
+                        <div style="flex: 1;">
+                            <h3 style="color: var(--text-primary); font-size: 0.95rem; font-weight: 600; margin-bottom: 0.25rem;">Martin Orduña</h3>
+                            <p style="font-size: 0.8rem; color: var(--text-secondary);">Llamadas: <strong id="callsCount-martin" style="color: var(--text-primary)">0</strong> | Citas: <strong id="citasCount-martin" style="color: var(--success)">0</strong></p>
+                            <div style="margin-top: 0.5rem; height: 6px; background: var(--bg-dark); border-radius: 3px; overflow: hidden; width: 100%;">
+                                <div id="conversionBar-martin" style="width: 0%; height: 100%; background: #f59e0b; transition: width 0.3s;"></div>
+                            </div>
+                            <span id="conversionRate-martin" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; display: block; font-weight: 500;">Conversión: 0%</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div style="overflow-x: auto; border-radius: 0.75rem; box-shadow: var(--shadow-md); border: 1px solid var(--border-color);">
@@ -784,6 +812,8 @@
                     <option value="franco lozada">franco lozada</option>
                     <option value="fabiola mendoza">fabiola mendoza</option>
                     <option value="fatima morales">fatima morales</option>
+                    <option value="marcela ramirez">marcela ramirez</option>
+                    <option value="martin orduña">martin orduña</option>
                     <option value="invitado">invitado</option>
                 </select>
             </div>
@@ -817,6 +847,8 @@
                     <option value="adminlr">adminlr (Admin)</option>
                     <option value="franco lozada">franco lozada</option>
                     <option value="fabiola mendoza">fabiola mendoza</option>
+                    <option value="marcela ramirez">marcela ramirez</option>
+                    <option value="martin orduña">martin orduña</option>
                 </select>
             </div>
 
@@ -876,7 +908,7 @@
         <h3 id="mediaViewerTitle" style="color: white; margin-top: 1rem; font-weight: 500; font-size: 1.25rem;"></h3>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=2"></script>
 </body>
 
 </html>

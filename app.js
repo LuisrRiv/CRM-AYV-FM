@@ -1692,10 +1692,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 const allowedUsers = [
     { user: 'adminlr', pass: 'AdminLR123', initials: 'AD', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads', 'llamadas'] },
     { user: 'franco lozada', pass: 'Franco123', initials: 'FL', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas'] },
-    { user: 'fabiola mendoza', pass: 'Fabiola123', initials: 'FM', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas'] },
-    { user: 'fatima morales', pass: 'Fatima123', initials: 'FT', panels: ['kanban', 'leads', 'assets', 'chat'] },
-    { user: 'invitado', pass: 'invitado123', initials: 'IN', panels: ['dashboard', 'reportes'] }
+    { user: 'fabiola mendoza', pass: 'Fabiola123', initials: 'FM', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas'], readOnly: true },
+    { user: 'fatima morales', pass: 'Fatima123', initials: 'FT', panels: ['kanban', 'leads', 'assets', 'chat'], readOnly: true },
+    { user: 'marcela ramirez', pass: 'Marcela123', initials: 'MR', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas'] },
+    { user: 'martin orduña', pass: 'Martin123', initials: 'MO', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas'] },
+    { user: 'invitado', pass: 'invitado123', initials: 'IN', panels: ['dashboard', 'reportes'], readOnly: true }
 ];
+
+function isReadOnlyUser() {
+    const session = localStorage.getItem('crm-logged-in');
+    const u = allowedUsers.find(x => x.user === session);
+    return u ? !!u.readOnly : false;
+}
 
 function switchView(targetId) {
     const navItems = document.querySelectorAll('.nav-item');
@@ -1739,6 +1747,28 @@ function applyPermissions(user) {
         const nav = document.querySelector(`.nav-item[data-target="${panel}"]`);
         if(nav) nav.style.display = 'flex';
     });
+    
+    // Read-only logic
+    let styleEl = document.getElementById('readonly-styles');
+    if (user.readOnly) {
+        if (!styleEl) {
+            styleEl = document.createElement('style');
+            styleEl.id = 'readonly-styles';
+            styleEl.innerHTML = `
+                button[onclick^="openNew"],
+                button[onclick^="delete"],
+                button[onclick^="save"],
+                button[onclick="document.getElementById('assetUpload').click()"],
+                button[type="submit"] { display: none !important; }
+                tr[onclick] { cursor: not-allowed !important; opacity: 0.9; }
+                .kanban-cards .kanban-card { cursor: not-allowed !important; opacity: 0.9; }
+                .data-table td button { display: none !important; }
+            `;
+            document.head.appendChild(styleEl);
+        }
+    } else {
+        if (styleEl) styleEl.remove();
+    }
     
     // Switch to first allowed view
     if(user.panels.length > 0) {
@@ -1937,7 +1967,9 @@ function updateLlamadasSummary(calls) {
     const users = {
         'adminlr': { calls: 0, citas: 0, suffix: 'adminlr' },
         'franco': { calls: 0, citas: 0, suffix: 'franco' },
-        'fabiola': { calls: 0, citas: 0, suffix: 'fabiola' }
+        'fabiola': { calls: 0, citas: 0, suffix: 'fabiola' },
+        'marcela': { calls: 0, citas: 0, suffix: 'marcela' },
+        'martin': { calls: 0, citas: 0, suffix: 'martin' }
     };
 
     calls.forEach(call => {
@@ -1951,6 +1983,12 @@ function updateLlamadasSummary(calls) {
         } else if (u.includes('fabiola')) {
             users.fabiola.calls++;
             if (call.cita_generada) users.fabiola.citas++;
+        } else if (u.includes('marcela')) {
+            users.marcela.calls++;
+            if (call.cita_generada) users.marcela.citas++;
+        } else if (u.includes('martin')) {
+            users.martin.calls++;
+            if (call.cita_generada) users.martin.citas++;
         }
     });
 
@@ -2129,3 +2167,26 @@ async function exportLeadsToExcel() {
         }
     }
 }
+
+// ==========================================
+// Read-Only Interceptors
+// ==========================================
+document.addEventListener('click', function(e) {
+    if(isReadOnlyUser()) {
+        const isModifyingBtn = e.target.closest('button[onclick^="openNew"], button[onclick^="delete"], button[onclick^="save"], .btn[onclick="document.getElementById(\\'assetUpload\\').click()"], button[type="submit"], tr[onclick]');
+        const isDeleteIconBtn = e.target.closest('.data-table td button');
+        if(isModifyingBtn || isDeleteIconBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            triggerNotification('Acceso Denegado', 'Solo tienes permisos de visualización.', 'warning');
+        }
+    }
+}, true);
+
+document.addEventListener('dragstart', function(e) {
+    if(isReadOnlyUser()) {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerNotification('Acceso Denegado', 'Solo tienes permisos de visualización.', 'warning');
+    }
+}, true);
