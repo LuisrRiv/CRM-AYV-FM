@@ -216,40 +216,31 @@ let currentFullPeriod = '2026-05-W1';
 function getWeekRange(yearMonth, week) {
     const [year, month] = yearMonth.split('-').map(Number);
     const pad = (n) => n.toString().padStart(2, '0');
-    const formatDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const formatDate = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
+
+    const lastDayOfMonth = new Date(year, month, 0).getDate();
 
     if (week === 'MONTH') {
-        // Para el resumen mensual, abarcamos desde la Semana 1 hasta la Semana 5
-        const w1 = getWeekRange(yearMonth, 'W1');
-        const w5 = getWeekRange(yearMonth, 'W5');
-        return { start: w1.start, end: w5.end };
+        return { start: formatDate(year, month, 1), end: formatDate(year, month, lastDayOfMonth) };
     }
 
-    // Encontrar el primer martes en o antes del día 1 del mes
-    // (La semana 1 comienza en el martes más cercano al inicio del mes)
-    const firstOfMonth = new Date(year, month - 1, 1);
-    const dayOfWeek = firstOfMonth.getDay(); // 0=Dom, 1=Lun, 2=Mar...
-    
-    // Calcular cuántos días retroceder hasta el martes anterior o igual
-    // Si el día 1 es martes (2), offset = 0
-    // Si el día 1 es miércoles (3), offset = 1 (retrocedemos 1 día al martes)
-    // Si el día 1 es lunes (1), offset = 6 (retrocedemos 6 días al martes anterior)
-    const offset = (dayOfWeek - 2 + 7) % 7;
-    
-    const week1Start = new Date(firstOfMonth);
-    week1Start.setDate(week1Start.getDate() - offset);
+    let startDay, endDay;
+    switch(week) {
+        case 'W1': startDay = 1; endDay = 7; break;
+        case 'W2': startDay = 8; endDay = 14; break;
+        case 'W3': startDay = 15; endDay = 21; break;
+        case 'W4': startDay = 22; endDay = 28; break;
+        case 'W5': startDay = 29; endDay = lastDayOfMonth; break;
+        default: startDay = 1; endDay = 7;
+    }
 
-    // Cada semana dura 7 días: martes a lunes
-    const weekNum = parseInt(week.replace('W', '')) - 1; // 0-indexed
-    const weekStart = new Date(week1Start);
-    weekStart.setDate(weekStart.getDate() + (weekNum * 7));
-    
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 6); // Lunes (6 días después del martes)
+    if (startDay > lastDayOfMonth) {
+        return { start: '1970-01-01', end: '1970-01-01' }; 
+    }
 
     return {
-        start: formatDate(weekStart),
-        end: formatDate(weekEnd)
+        start: formatDate(year, month, startDay),
+        end: formatDate(year, month, endDay)
     };
 }
 
@@ -285,6 +276,7 @@ function updateWeekLabels(yearMonth) {
     const currentVal = select.value;
     
     const formatLabel = (dateStr) => {
+        if (dateStr === '1970-01-01') return 'N/A';
         const d = new Date(dateStr + 'T12:00:00');
         return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
     };
@@ -293,11 +285,22 @@ function updateWeekLabels(yearMonth) {
         const option = select.querySelector(`option[value="W${i}"]`);
         if (option) {
             const range = getWeekRange(yearMonth, `W${i}`);
-            option.textContent = `Semana ${i} (${formatLabel(range.start)} - ${formatLabel(range.end)})`;
+            if (range.start === '1970-01-01') {
+                option.textContent = `Semana ${i} (No aplica)`;
+                option.disabled = true;
+                if (currentVal === `W${i}`) select.value = 'W4';
+            } else {
+                option.textContent = `Semana ${i} (${formatLabel(range.start)} - ${formatLabel(range.end)})`;
+                option.disabled = false;
+            }
         }
     }
     
-    select.value = currentVal;
+    if (select.value === 'W5' && select.querySelector('option[value="W5"]').disabled) {
+        select.value = 'W4';
+    } else {
+        select.value = currentVal;
+    }
 }
 
 async function fetchManualReportData() {
