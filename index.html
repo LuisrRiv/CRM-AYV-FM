@@ -506,6 +506,14 @@
                                 <option value="2026-12">Diciembre 2026</option>
                             </select>
                         </div>
+                        <div style="width: 200px;">
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Canal</label>
+                            <select id="registroCanal" class="form-control" onchange="updateRegistroLeadsView()">
+                                <option value="all" selected>Todos los canales</option>
+                                <option value="google">Google</option>
+                                <option value="meta">Meta</option>
+                            </select>
+                        </div>
                         <div style="flex: 1; padding-top: 1rem;">
                             <p style="font-size: 0.875rem; color: var(--text-secondary);">
                                 <i class="fa-solid fa-circle-info" style="color: var(--accent-primary); margin-right: 0.5rem;"></i>
@@ -949,7 +957,7 @@
         <h3 id="mediaViewerTitle" style="color: white; margin-top: 1rem; font-weight: 500; font-size: 1.25rem;"></h3>
     </div>
 
-    <script src="app.js?v=7"></script>
+    <script src="app.js?v=8"></script>
 </body>
 
 </html>

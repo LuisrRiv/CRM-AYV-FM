@@ -616,7 +616,8 @@ function renderRegistroLeadsTable(manualData, month) {
     tbody.innerHTML = '';
 
     const currentUser = localStorage.getItem('crm-logged-in');
-    const isReadOnly = currentUser === 'invitado';
+    const canal = document.getElementById('registroCanal').value;
+    const isReadOnly = currentUser === 'invitado' || canal === 'all';
 
     sucursalesList.forEach(sucursal => {
         const tr = document.createElement('tr');
@@ -630,8 +631,33 @@ function renderRegistroLeadsTable(manualData, month) {
         // Weeks 1 to 5
         for (let w = 1; w <= 5; w++) {
             const periodo = `${month}-W${w}`;
-            const brutos = manualData.find(d => d.zona === sucursal && d.periodo === periodo && d.campo === 'total_brutos')?.valor || 0;
-            const viables = manualData.find(d => d.zona === sucursal && d.periodo === periodo && d.campo === 'total_viables')?.valor || 0;
+            
+            let brutos = 0, viables = 0;
+            let campoBrutos = '', campoViables = '';
+            
+            const legacyBrutos = manualData.find(d => d.zona === sucursal && d.periodo === periodo && d.campo === 'total_brutos')?.valor || 0;
+            const legacyViables = manualData.find(d => d.zona === sucursal && d.periodo === periodo && d.campo === 'total_viables')?.valor || 0;
+            
+            const googleBrutos = manualData.find(d => d.zona === sucursal && d.periodo === periodo && d.campo === 'google_brutos')?.valor || 0;
+            const googleViables = manualData.find(d => d.zona === sucursal && d.periodo === periodo && d.campo === 'google_viables')?.valor || 0;
+
+            const metaBrutos = manualData.find(d => d.zona === sucursal && d.periodo === periodo && d.campo === 'meta_brutos')?.valor || 0;
+            const metaViables = manualData.find(d => d.zona === sucursal && d.periodo === periodo && d.campo === 'meta_viables')?.valor || 0;
+
+            if (canal === 'all') {
+                brutos = legacyBrutos + googleBrutos + metaBrutos;
+                viables = legacyViables + googleViables + metaViables;
+            } else if (canal === 'google') {
+                brutos = googleBrutos;
+                viables = googleViables;
+                campoBrutos = 'google_brutos';
+                campoViables = 'google_viables';
+            } else if (canal === 'meta') {
+                brutos = metaBrutos;
+                viables = metaViables;
+                campoBrutos = 'meta_brutos';
+                campoViables = 'meta_viables';
+            }
             
             totalMonthBrutos += brutos;
             totalMonthViables += viables;
@@ -642,12 +668,12 @@ function renderRegistroLeadsTable(manualData, month) {
                 <td style="background: ${bgColor}; padding: 0.5rem; text-align: center;">
                     <input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} 
                         style="width: 50px; padding: 0.25rem; text-align: center; font-size: 0.8rem;" 
-                        value="${brutos}" onchange="saveRegistroLeadData('${sucursal}', 'total_brutos', this.value, '${periodo}')">
+                        value="${brutos}" onchange="saveRegistroLeadData('${sucursal}', '${campoBrutos}', this.value, '${periodo}')">
                 </td>
                 <td style="background: ${bgColor}; padding: 0.5rem; text-align: center;">
                     <input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} 
                         style="width: 50px; padding: 0.25rem; text-align: center; font-size: 0.8rem; border-color: var(--accent-primary);" 
-                        value="${viables}" onchange="saveRegistroLeadData('${sucursal}', 'total_viables', this.value, '${periodo}')">
+                        value="${viables}" onchange="saveRegistroLeadData('${sucursal}', '${campoViables}', this.value, '${periodo}')">
                 </td>
             `;
         }
