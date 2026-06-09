@@ -617,7 +617,7 @@ function renderRegistroLeadsTable(manualData, month) {
 
     const currentUser = localStorage.getItem('crm-logged-in');
     const canal = document.getElementById('registroCanal').value;
-    const isReadOnly = currentUser === 'invitado' || canal === 'all';
+    const isReadOnly = currentUser === 'invitado';
 
     sucursalesList.forEach(sucursal => {
         const tr = document.createElement('tr');
@@ -647,6 +647,8 @@ function renderRegistroLeadsTable(manualData, month) {
             if (canal === 'all') {
                 brutos = legacyBrutos + googleBrutos + metaBrutos;
                 viables = legacyViables + googleViables + metaViables;
+                campoBrutos = 'total_brutos';
+                campoViables = 'total_viables';
             } else if (canal === 'google') {
                 brutos = googleBrutos;
                 viables = googleViables;
@@ -1189,7 +1191,11 @@ async function fetchDispersiones() {
         tbody.appendChild(tr);
     });
     
-    updateCloserSummary();
+    if (typeof applyGlobalFilter === 'function') {
+        applyGlobalFilter();
+    } else {
+        updateCloserSummary();
+    }
 }
 
 async function saveDispersion() {
