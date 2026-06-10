@@ -746,47 +746,7 @@
                         </div>
                     </div>
 
-                    <!-- 3. Tendencia Mensual -->
-                    <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); height: 320px; display: flex; flex-direction: column;">
-                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; font-weight: 600;"><i class="fa-solid fa-chart-line" style="color: var(--accent-primary); margin-right: 0.5rem;"></i> Tendencia de Incidencias</h3>
-                        <div style="flex: 1; min-height: 0; position: relative;">
-                            <canvas id="demeritosTendenciaChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- 4. Deméritos por Categoría -->
-                    <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); height: 320px; display: flex; flex-direction: column;">
-                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; font-weight: 600;"><i class="fa-solid fa-tags" style="color: var(--accent-primary); margin-right: 0.5rem;"></i> Incidencias por Categoría</h3>
-                        <div style="flex: 1; min-height: 0; position: relative;">
-                            <canvas id="demeritosCategoriaChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- 5. Urgencia de los Deméritos -->
-                    <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); height: 320px; display: flex; flex-direction: column;">
-                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; font-weight: 600;"><i class="fa-solid fa-circle-exclamation" style="color: var(--accent-primary); margin-right: 0.5rem;"></i> Distribución por Urgencia</h3>
-                        <div style="flex: 1; min-height: 0; position: relative; display: flex; justify-content: center; align-items: center;">
-                            <canvas id="demeritosUrgenciaChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- 6. Top Responsables -->
-                    <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); height: 320px; display: flex; flex-direction: column;">
-                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; font-weight: 600;"><i class="fa-solid fa-award" style="color: var(--accent-primary); margin-right: 0.5rem;"></i> Top Responsables con Incidencias</h3>
-                        <div style="flex: 1; min-height: 0; position: relative;">
-                            <canvas id="demeritosResponsablesChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- 7. Comparativo de Sucursales (Heatmap) -->
-                    <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); height: 320px; display: flex; flex-direction: column; grid-column: span 1;" class="heatmap-card">
-                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; font-weight: 600;"><i class="fa-solid fa-grid-3x3" style="color: var(--accent-primary); margin-right: 0.5rem;"></i> Comparativo de Incidencias por Sucursal y Urgencia</h3>
-                        <div style="flex: 1; overflow-x: auto; overflow-y: auto;" id="demeritosHeatmapContainer">
-                            <!-- Heatmap Table populated dynamically -->
-                        </div>
-                    </div>
-
-                    <!-- 8. Días sin Incidencias por Sucursal -->
+                    <!-- 3. Días sin Incidencias por Sucursal -->
                     <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); height: 320px; display: flex; flex-direction: column;">
                         <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; font-weight: 600;"><i class="fa-solid fa-calendar-check" style="color: var(--accent-primary); margin-right: 0.5rem;"></i> Días sin Incidencias por Sucursal</h3>
                         <div style="flex: 1; min-height: 0; position: relative;">
