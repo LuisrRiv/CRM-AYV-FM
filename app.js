@@ -1268,13 +1268,34 @@ function applyGlobalFilter() {
 
     // Filter Dispersiones
     const dispTbody = document.querySelector('#dispersiones .data-table tbody');
+    const weekFilter = document.getElementById('dispersionWeekFilter')?.value || 'all';
+    
     if (dispTbody) {
         const rows = dispTbody.querySelectorAll('tr');
         rows.forEach(row => {
             const cells = row.querySelectorAll('td');
             if (cells.length > 2) {
                 const dateStr = cells[2].innerText.trim();
-                row.style.display = matchesFilter(dateStr) ? '' : 'none';
+                const matchesDate = matchesFilter(dateStr);
+                
+                let matchesWeek = true;
+                if (weekFilter !== 'all') {
+                    const parts = dateStr.split('/');
+                    if (parts.length === 3) {
+                        const day = parseInt(parts[0]);
+                        let w = 'W1';
+                        if (day >= 8 && day <= 14) w = 'W2';
+                        else if (day >= 15 && day <= 21) w = 'W3';
+                        else if (day >= 22 && day <= 28) w = 'W4';
+                        else if (day >= 29) w = 'W5';
+                        
+                        matchesWeek = (w === weekFilter);
+                    } else {
+                        matchesWeek = false;
+                    }
+                }
+                
+                row.style.display = (matchesDate && matchesWeek) ? '' : 'none';
             }
         });
         updateCloserSummary();

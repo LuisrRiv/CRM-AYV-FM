@@ -332,9 +332,21 @@
             <section id="dispersiones" class="view-section">
                 <div class="flex justify-between items-center mb-4">
                     <h1 class="text-2xl">Dispersiones Totales</h1>
-                    <div class="flex gap-2">
-                        <button class="btn" onclick="openNewDispersionPanel()"><i class="fa-solid fa-plus"></i> Nueva
-                            Dispersión</button>
+                    <div class="flex gap-3 items-center">
+                        <!-- Filtro de Semanas para Dispersiones -->
+                        <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-panel); padding: 0.5rem 1rem; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                            <i class="fa-solid fa-calendar-week" style="color: var(--accent-primary)"></i>
+                            <select id="dispersionWeekFilter" onchange="applyGlobalFilter()"
+                                style="background: transparent; border: none; color: var(--text-primary); font-size: 0.875rem; cursor: pointer; outline: none; -webkit-appearance: none; appearance: none; padding-right: 1rem;">
+                                <option value="all" style="background: var(--bg-panel)">Todas las semanas</option>
+                                <option value="W1" style="background: var(--bg-panel)">Semana 1 (1 - 7)</option>
+                                <option value="W2" style="background: var(--bg-panel)">Semana 2 (8 - 14)</option>
+                                <option value="W3" style="background: var(--bg-panel)">Semana 3 (15 - 21)</option>
+                                <option value="W4" style="background: var(--bg-panel)">Semana 4 (22 - 28)</option>
+                                <option value="W5" style="background: var(--bg-panel)">Semana 5 (29+)</option>
+                            </select>
+                        </div>
+                        <button class="btn" onclick="openNewDispersionPanel()"><i class="fa-solid fa-plus"></i> Nueva Dispersión</button>
                     </div>
                 </div>
                 <!-- Closer Summary Cards -->
