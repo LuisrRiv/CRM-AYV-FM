@@ -3216,6 +3216,7 @@ function applyDemeritosFilters() {
                 d.folio?.toLowerCase()?.includes(search) ||
                 d.responsable?.toLowerCase()?.includes(search) ||
                 d.cliente?.toLowerCase()?.includes(search) ||
+                d.modelo_auto?.toLowerCase()?.includes(search) ||
                 d.categoria?.toLowerCase()?.includes(search) ||
                 d.descripcion?.toLowerCase()?.includes(search) ||
                 d.observaciones?.toLowerCase()?.includes(search) ||
@@ -3306,7 +3307,7 @@ function renderDemeritosListTable(data) {
     tbody.innerHTML = '';
     
     if (data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-secondary); padding: 2rem;">No se encontraron deméritos con los filtros seleccionados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; color: var(--text-secondary); padding: 2rem;">No se encontraron deméritos con los filtros seleccionados.</td></tr>`;
         return;
     }
     
@@ -3342,6 +3343,8 @@ function renderDemeritosListTable(data) {
             <td class="font-medium">${d.folio || ''}</td>
             <td><span style="font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); background: var(--bg-dark); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">${d.sucursal || ''}</span></td>
             <td>${d.canal || ''}</td>
+            <td>${d.cliente || ''}</td>
+            <td>${d.modelo_auto || ''}</td>
             <td>${d.categoria || ''}</td>
             <td><span class="${badgeGrav}">${d.gravedad || ''}</span></td>
             <td><span class="${badgeEstatus}">${d.estatus || ''}</span></td>
@@ -3387,6 +3390,7 @@ function openNewDemeritoPanel() {
     document.getElementById('demeritoCanalInput').value = "";
     document.getElementById('demeritoResponsableInput').value = "";
     document.getElementById('demeritoClienteInput').value = "";
+    document.getElementById('demeritoAutoInput').value = "";
     document.getElementById('demeritoCategoriaInput').value = "";
     document.getElementById('demeritoDescripcionInput').value = "";
     document.getElementById('demeritoGravedadInput').value = "Media";
@@ -3413,6 +3417,7 @@ function openDemeritoPanel(d) {
     document.getElementById('demeritoCanalInput').value = d.canal;
     document.getElementById('demeritoResponsableInput').value = d.responsable;
     document.getElementById('demeritoClienteInput').value = d.cliente || "";
+    document.getElementById('demeritoAutoInput').value = d.modelo_auto || "";
     document.getElementById('demeritoCategoriaInput').value = d.categoria;
     document.getElementById('demeritoDescripcionInput').value = d.descripcion || "";
     document.getElementById('demeritoGravedadInput').value = d.gravedad;
@@ -3437,6 +3442,7 @@ async function saveDemerito() {
     const canal = document.getElementById('demeritoCanalInput').value;
     const responsable = document.getElementById('demeritoResponsableInput').value;
     const cliente = document.getElementById('demeritoClienteInput').value.trim();
+    const modelo_auto = document.getElementById('demeritoAutoInput').value.trim();
     const categoria = document.getElementById('demeritoCategoriaInput').value;
     const descripcion = document.getElementById('demeritoDescripcionInput').value.trim();
     const gravedad = document.getElementById('demeritoGravedadInput').value;
@@ -3456,6 +3462,7 @@ async function saveDemerito() {
         canal: canal,
         responsable: responsable,
         cliente: cliente,
+        modelo_auto: modelo_auto,
         categoria: categoria,
         descripcion: descripcion,
         gravedad: gravedad,
@@ -3644,12 +3651,13 @@ function exportDemeritosToExcel() {
             'FOLIO': d.folio || '',
             'SUCURSAL': d.sucursal || '',
             'CANAL': d.canal || '',
+            'CLIENTE': d.cliente || '',
+            'AUTO': d.modelo_auto || '',
             'CATEGORÍA': d.categoria || '',
             'URGENCIA': d.gravedad || '',
             'ESTATUS': d.estatus || '',
             'RESPONSABLE': d.responsable || '',
             'DESCRIPCIÓN': d.descripcion || '',
-            'CLIENTE': d.cliente || '',
             'REGISTRÓ': d.usuario_registra || '',
             'OBSERVACIONES': d.observaciones || ''
         }));
@@ -3663,12 +3671,13 @@ function exportDemeritosToExcel() {
             { wch: 10 }, // FOLIO
             { wch: 22 }, // SUCURSAL
             { wch: 15 }, // CANAL
+            { wch: 20 }, // CLIENTE
+            { wch: 20 }, // AUTO
             { wch: 20 }, // CATEGORÍA
             { wch: 12 }, // URGENCIA
             { wch: 12 }, // ESTATUS
             { wch: 18 }, // RESPONSABLE
             { wch: 40 }, // DESCRIPCIÓN
-            { wch: 20 }, // CLIENTE
             { wch: 15 }, // REGISTRÓ
             { wch: 30 }  // OBSERVACIONES
         ];
@@ -3727,12 +3736,14 @@ async function exportDemeritosToPDF() {
         doc.text(`Generado el: ${new Date().toLocaleString('es-MX')} por ${localStorage.getItem('crm-logged-in') || 'adminlr'}${filterStr}`, 14, 21);
         
         // Formatear filas
-        const tableHeaders = [['Fecha', 'Folio', 'Sucursal', 'Canal', 'Categoría', 'Urgencia', 'Estatus', 'Responsable', 'Registró']];
+        const tableHeaders = [['Fecha', 'Folio', 'Sucursal', 'Canal', 'Cliente', 'Auto', 'Categoría', 'Urgencia', 'Estatus', 'Responsable', 'Registró']];
         const tableRows = filteredDemeritos.map(d => [
             d.fecha ? d.fecha.split('-').reverse().join('/') : '',
             d.folio || '',
             d.sucursal || '',
             d.canal || '',
+            d.cliente || '',
+            d.modelo_auto || '',
             d.categoria || '',
             d.gravedad || '',
             d.estatus || '',
