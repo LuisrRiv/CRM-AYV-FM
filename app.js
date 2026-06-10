@@ -3451,25 +3451,20 @@ async function saveDemerito() {
     const observaciones = document.getElementById('demeritoObservacionesInput').value.trim();
     const usuarioRegistra = document.getElementById('demeritoUsuarioRegistraInput').value;
     
-    if (!fecha || !sucursal || !canal || !responsable || !categoria || !descripcion || !gravedad || !estatus) {
-        triggerNotification('Advertencia', 'Por favor, complete todos los campos obligatorios (*).', 'warning');
-        return;
-    }
-    
     const demData = {
         folio: folio,
-        fecha: fecha,
-        sucursal: sucursal,
-        canal: canal,
-        responsable: responsable,
-        cliente: cliente,
-        modelo_auto: modelo_auto,
-        categoria: categoria,
-        descripcion: descripcion,
-        gravedad: gravedad,
-        estatus: estatus,
-        observaciones: observaciones,
-        usuario_registra: usuarioRegistra
+        fecha: fecha || null,
+        sucursal: sucursal || null,
+        canal: canal || null,
+        responsable: responsable || null,
+        cliente: cliente || null,
+        modelo_auto: modelo_auto || null,
+        categoria: categoria || null,
+        descripcion: descripcion || null,
+        gravedad: gravedad || null,
+        estatus: estatus || null,
+        observaciones: observaciones || null,
+        usuario_registra: usuarioRegistra || null
     };
     
     try {
