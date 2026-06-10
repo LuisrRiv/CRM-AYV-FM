@@ -11,6 +11,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 </head>
 
 <body>
@@ -82,6 +84,9 @@
             </a>
             <a class="nav-item" data-target="demeritos">
                 <i class="fa-solid fa-clipboard-check"></i> Asistencias y Deméritos
+            </a>
+            <a class="nav-item" data-target="demeritosComerciales">
+                <i class="fa-solid fa-triangle-exclamation"></i> Deméritos Comerciales
             </a>
         </nav>
     </aside>
@@ -664,22 +669,21 @@
                 </div>
             </section>
 
-            <!-- Deméritos y Asistencias View -->
+            <!-- Asistencias y Deméritos View (Evaluación de Citas) -->
             <section id="demeritos" class="view-section">
                 <div class="flex justify-between items-center mb-4">
                     <h1 class="text-2xl">Asistencias y Deméritos</h1>
-                    <div class="flex gap-2">
-                        <button class="btn" onclick="renderDemeritosView()"><i class="fa-solid fa-sync"></i> Actualizar</button>
-                    </div>
+                    <button class="btn" onclick="renderAsistenciasSubView()"><i class="fa-solid fa-sync"></i> Actualizar</button>
                 </div>
-
+                
                 <!-- Ranking Podio -->
+                <h3 style="font-size: 1rem; color: var(--text-primary); font-weight: 600; margin-bottom: 1rem;"><i class="fa-solid fa-ranking-star" style="color: var(--accent-primary); margin-right: 0.5rem;"></i> Podio de Asistencias del Mes</h3>
                 <div class="flex gap-4 mb-4" id="demeritosPodium" style="flex-wrap: wrap;">
                     <!-- Se llenará dinámicamente con JS -->
                 </div>
 
-                <!-- Tabla de Evaluación -->
-                <div style="overflow-x: auto; border-radius: 0.75rem; box-shadow: var(--shadow-md); border: 1px solid var(--border-color); background: var(--bg-panel);">
+                <!-- Tabla de Evaluación de Citas -->
+                <div style="overflow-x: auto; border-radius: 0.75rem; border: 1px solid var(--border-color); background: var(--bg-panel); margin-top: 1.5rem;">
                     <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color);">
                         <h3 style="font-size: 1rem; color: var(--text-primary); font-weight: 600;">Citas Pendientes de Evaluación</h3>
                         <p style="font-size: 0.8rem; color: var(--text-secondary);">Leads que actualmente están en status "CITA". Confirma si asistieron a la sucursal.</p>
@@ -699,6 +703,222 @@
                             <!-- Dinámico -->
                         </tbody>
                     </table>
+                </div>
+            </section>
+
+            <!-- Deméritos Comerciales View (Dashboard BI & Consultas) -->
+            <section id="demeritosComerciales" class="view-section">
+                <!-- Header -->
+                <div class="flex justify-between items-center mb-4" style="border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                    <h1 class="text-2xl" style="margin-bottom: 0;">Deméritos Comerciales</h1>
+                    <div class="flex gap-2">
+                        <button class="btn btn-outline" onclick="openCategoryCatalogPanel()" style="display: flex; align-items: center; gap: 0.5rem;"><i class="fa-solid fa-list-check"></i> Categorías</button>
+                        <button class="btn" onclick="refreshDemeritosData()" style="display: flex; align-items: center; gap: 0.5rem;"><i class="fa-solid fa-sync"></i> Actualizar</button>
+                    </div>
+                </div>
+
+                <!-- Tarjetas de KPIs -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;" id="demeritosKPIContainer">
+                    <!-- Generado dinámicamente -->
+                </div>
+
+                <!-- Contenedor de Alertas Automáticas -->
+                <div id="demeritosAlertsContainer" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem;">
+                    <!-- Generado dinámicamente -->
+                </div>
+
+                <!-- Grid de Gráficos del Dashboard -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                    
+                    <!-- 1. Deméritos por Sucursal -->
+                    <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); height: 320px; display: flex; flex-direction: column;">
+                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; font-weight: 600;"><i class="fa-solid fa-store" style="color: var(--accent-primary); margin-right: 0.5rem;"></i> Deméritos por Sucursal</h3>
+                        <div style="flex: 1; min-height: 0; position: relative;">
+                            <canvas id="demeritosSucursalChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 2. Deméritos por Canal -->
+                    <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); height: 320px; display: flex; flex-direction: column;">
+                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; font-weight: 600;"><i class="fa-solid fa-share-nodes" style="color: var(--accent-primary); margin-right: 0.5rem;"></i> Distribución por Canal</h3>
+                        <div style="flex: 1; min-height: 0; position: relative; display: flex; justify-content: center; align-items: center;">
+                            <canvas id="demeritosCanalChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 3. Tendencia Mensual -->
+                    <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); height: 320px; display: flex; flex-direction: column;">
+                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; font-weight: 600;"><i class="fa-solid fa-chart-line" style="color: var(--accent-primary); margin-right: 0.5rem;"></i> Tendencia de Incidencias</h3>
+                        <div style="flex: 1; min-height: 0; position: relative;">
+                            <canvas id="demeritosTendenciaChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 4. Deméritos por Categoría -->
+                    <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); height: 320px; display: flex; flex-direction: column;">
+                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; font-weight: 600;"><i class="fa-solid fa-tags" style="color: var(--accent-primary); margin-right: 0.5rem;"></i> Incidencias por Categoría</h3>
+                        <div style="flex: 1; min-height: 0; position: relative;">
+                            <canvas id="demeritosCategoriaChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 5. Urgencia de los Deméritos -->
+                    <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); height: 320px; display: flex; flex-direction: column;">
+                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; font-weight: 600;"><i class="fa-solid fa-circle-exclamation" style="color: var(--accent-primary); margin-right: 0.5rem;"></i> Distribución por Urgencia</h3>
+                        <div style="flex: 1; min-height: 0; position: relative; display: flex; justify-content: center; align-items: center;">
+                            <canvas id="demeritosUrgenciaChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 6. Top Responsables -->
+                    <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); height: 320px; display: flex; flex-direction: column;">
+                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; font-weight: 600;"><i class="fa-solid fa-award" style="color: var(--accent-primary); margin-right: 0.5rem;"></i> Top Responsables con Incidencias</h3>
+                        <div style="flex: 1; min-height: 0; position: relative;">
+                            <canvas id="demeritosResponsablesChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 7. Comparativo de Sucursales (Heatmap) -->
+                    <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); height: 320px; display: flex; flex-direction: column; grid-column: span 1;" class="heatmap-card">
+                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; font-weight: 600;"><i class="fa-solid fa-grid-3x3" style="color: var(--accent-primary); margin-right: 0.5rem;"></i> Comparativo de Incidencias por Sucursal y Urgencia</h3>
+                        <div style="flex: 1; overflow-x: auto; overflow-y: auto;" id="demeritosHeatmapContainer">
+                            <!-- Heatmap Table populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- 8. Días sin Incidencias por Sucursal -->
+                    <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); height: 320px; display: flex; flex-direction: column;">
+                        <h3 style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; font-weight: 600;"><i class="fa-solid fa-calendar-check" style="color: var(--accent-primary); margin-right: 0.5rem;"></i> Días sin Incidencias por Sucursal</h3>
+                        <div style="flex: 1; min-height: 0; position: relative;">
+                            <canvas id="demeritosDiasSinIncidenciasChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección de Filtros y Consulta -->
+                <div style="background: var(--bg-panel); border-radius: 0.75rem; border: 1px solid var(--border-color); padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: var(--shadow-sm);">
+                    <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;"><i class="fa-solid fa-sliders" style="color: var(--accent-primary);"></i> Filtros Avanzados</h3>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Fecha Inicio</label>
+                            <input type="date" id="filterDemFechaInicio" class="form-control" style="padding: 0.4rem 0.6rem; font-size: 0.8rem;" onchange="applyDemeritosFilters()">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Fecha Fin</label>
+                            <input type="date" id="filterDemFechaFin" class="form-control" style="padding: 0.4rem 0.6rem; font-size: 0.8rem;" onchange="applyDemeritosFilters()">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Sucursal</label>
+                            <select id="filterDemSucursal" class="form-control" style="padding: 0.4rem 0.6rem; font-size: 0.8rem;" onchange="applyDemeritosFilters()">
+                                <option value="all">Todas</option>
+                                <option value="XALAPA 20 NOV">XALAPA 20 NOV</option>
+                                <option value="XALAPA ARAUCARIAS">XALAPA ARAUCARIAS</option>
+                                <option value="VERACRUZ">VERACRUZ</option>
+                                <option value="ZAPOPAN">ZAPOPAN</option>
+                                <option value="MONTERREY CENTRO">MONTERREY CENTRO</option>
+                                <option value="MONTERREY TERRANOVA">MONTERREY TERRANOVA</option>
+                                <option value="MONTERREY MOVIL">MONTERREY MOVIL</option>
+                                <option value="QUERETARO">QUERETARO</option>
+                                <option value="QUERETARO MOVIL">QUERETARO MOVIL</option>
+                                <option value="GUADALAJARA MOVIL">GUADALAJARA MOVIL</option>
+                                <option value="PUEBLA ANZURES">PUEBLA ANZURES</option>
+                                <option value="PUEBLA CHOLULA">PUEBLA CHOLULA</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Canal</label>
+                            <select id="filterDemCanal" class="form-control" style="padding: 0.4rem 0.6rem; font-size: 0.8rem;" onchange="applyDemeritosFilters()">
+                                <option value="all">Todos</option>
+                                <option value="Redes">Redes</option>
+                                <option value="Sucursal">Sucursal</option>
+                                <option value="Externo">Externo</option>
+                                <option value="Sucursal Móvil">Sucursal Móvil</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Categoría</label>
+                            <select id="filterDemCategoria" class="form-control" style="padding: 0.4rem 0.6rem; font-size: 0.8rem;" onchange="applyDemeritosFilters()">
+                                <!-- Populated dynamically -->
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Responsable</label>
+                            <select id="filterDemResponsable" class="form-control" style="padding: 0.4rem 0.6rem; font-size: 0.8rem;" onchange="applyDemeritosFilters()">
+                                <option value="all">Todos</option>
+                                <option value="adminlr">adminlr</option>
+                                <option value="franco lozada">franco lozada</option>
+                                <option value="fabiola mendoza">fabiola mendoza</option>
+                                <option value="fatima morales">fatima morales</option>
+                                <option value="marcela ramirez">marcela ramirez</option>
+                                <option value="martin orduña">martin orduña</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Urgencia</label>
+                            <select id="filterDemGravedad" class="form-control" style="padding: 0.4rem 0.6rem; font-size: 0.8rem;" onchange="applyDemeritosFilters()">
+                                <option value="all">Todas</option>
+                                <option value="Baja">Baja</option>
+                                <option value="Media">Media</option>
+                                <option value="Alta">Alta</option>
+                                <option value="Crítica">Crítica</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Estatus</label>
+                            <select id="filterDemEstatus" class="form-control" style="padding: 0.4rem 0.6rem; font-size: 0.8rem;" onchange="applyDemeritosFilters()">
+                                <option value="all">Todos</option>
+                                <option value="Pendiente">Pendiente</option>
+                                <option value="En revisión">En revisión</option>
+                                <option value="Resuelto">Resuelto</option>
+                                <option value="Cerrado">Cerrado</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Barra de Herramientas de la Tabla -->
+                    <div class="flex justify-between items-center mb-4" style="flex-wrap: wrap; gap: 1rem;">
+                        <!-- Búsqueda rápida -->
+                        <div class="search-bar" style="width: 250px;">
+                            <i class="fa-solid fa-search" style="color: var(--text-secondary)"></i>
+                            <input type="text" id="demeritosSearchInput" placeholder="Búsqueda rápida..." oninput="applyDemeritosFilters()">
+                        </div>
+                        
+                        <!-- Botón de Limpiar filtros y Botones de Acción -->
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <button class="btn btn-outline" onclick="clearDemeritosFilters()" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.85rem;"><i class="fa-solid fa-filter-circle-xmark"></i> Limpiar Filtros</button>
+                            <button class="btn btn-outline" id="btnExportDemExcel" onclick="exportDemeritosToExcel()" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.85rem; color: #1d6f42; border-color: #1d6f42;" onmouseover="this.style.background='#1d6f42'; this.style.color='white';" onmouseout="this.style.background='transparent'; this.style.color='#1d6f42';">
+                                <i class="fa-solid fa-file-excel"></i> Excel
+                            </button>
+                            <button class="btn btn-outline" id="btnExportDemPDF" onclick="exportDemeritosToPDF()" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.85rem; color: #c0392b; border-color: #c0392b;" onmouseover="this.style.background='#c0392b'; this.style.color='white';" onmouseout="this.style.background='transparent'; this.style.color='#c0392b';">
+                                <i class="fa-solid fa-file-pdf"></i> PDF
+                            </button>
+                            <button class="btn" onclick="openNewDemeritoPanel()" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.85rem;"><i class="fa-solid fa-plus"></i> Registrar Demérito</button>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Consulta -->
+                    <div style="overflow-x: auto;">
+                        <table class="data-table" id="demeritosListTable">
+                            <thead>
+                                <tr>
+                                    <th onclick="sortDemeritos('fecha')" style="cursor: pointer; user-select: none;">Fecha <span id="sort-icon-fecha"><i class="fa-solid fa-sort"></i></span></th>
+                                    <th onclick="sortDemeritos('folio')" style="cursor: pointer; user-select: none;">Folio <span id="sort-icon-folio"><i class="fa-solid fa-sort"></i></span></th>
+                                    <th onclick="sortDemeritos('sucursal')" style="cursor: pointer; user-select: none;">Sucursal <span id="sort-icon-sucursal"><i class="fa-solid fa-sort"></i></span></th>
+                                    <th onclick="sortDemeritos('canal')" style="cursor: pointer; user-select: none;">Canal <span id="sort-icon-canal"><i class="fa-solid fa-sort"></i></span></th>
+                                    <th onclick="sortDemeritos('categoria')" style="cursor: pointer; user-select: none;">Categoría <span id="sort-icon-categoria"><i class="fa-solid fa-sort"></i></span></th>
+                                    <th onclick="sortDemeritos('gravedad')" style="cursor: pointer; user-select: none;">Urgencia <span id="sort-icon-gravedad"><i class="fa-solid fa-sort"></i></span></th>
+                                    <th onclick="sortDemeritos('estatus')" style="cursor: pointer; user-select: none;">Estatus <span id="sort-icon-estatus"><i class="fa-solid fa-sort"></i></span></th>
+                                    <th onclick="sortDemeritos('responsable')" style="cursor: pointer; user-select: none;">Responsable <span id="sort-icon-responsable"><i class="fa-solid fa-sort"></i></span></th>
+                                    <th onclick="sortDemeritos('usuario_registra')" style="cursor: pointer; user-select: none;">Registró <span id="sort-icon-usuario_registra"><i class="fa-solid fa-sort"></i></span></th>
+                                    <th style="width: 50px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="demeritosListTableBody">
+                                <!-- Llenado dinámico -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -940,6 +1160,146 @@
                 <button class="btn btn-outline" style="flex: 1;" onclick="closeLlamadasPanel()">Cancelar</button>
                 <button class="btn" style="flex: 1; background: var(--danger); border-color: var(--danger); display: none;"
                     id="btnDeleteLlamada" onclick="deleteCurrentLlamada()">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide-over Panel (Demeritos) -->
+    <div class="slide-over" id="demeritoFormPanel">
+        <div class="slide-header">
+            <h2 class="text-xl" id="demeritoPanelTitle">Registrar Demérito</h2>
+            <button class="close-btn" onclick="closeDemeritoPanel()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="slide-content">
+            <input type="hidden" id="demeritoIdInput">
+            
+            <div class="form-group">
+                <label>Folio (Automático)</label>
+                <input type="text" class="form-control" id="demeritoFolioInput" readonly disabled style="opacity: 0.7; font-weight: bold; background: var(--bg-dark);">
+            </div>
+
+            <div class="form-group">
+                <label>Fecha del Demérito *</label>
+                <input type="date" class="form-control" id="demeritoFechaInput" required>
+            </div>
+
+            <div class="form-group">
+                <label>Sucursal *</label>
+                <select class="form-control" id="demeritoSucursalInput" required>
+                    <option value="" disabled selected>Selecciona una sucursal</option>
+                    <option value="XALAPA 20 NOV">XALAPA 20 NOV</option>
+                    <option value="XALAPA ARAUCARIAS">XALAPA ARAUCARIAS</option>
+                    <option value="VERACRUZ">VERACRUZ</option>
+                    <option value="ZAPOPAN">ZAPOPAN</option>
+                    <option value="MONTERREY CENTRO">MONTERREY CENTRO</option>
+                    <option value="MONTERREY TERRANOVA">MONTERREY TERRANOVA</option>
+                    <option value="MONTERREY MOVIL">MONTERREY MOVIL</option>
+                    <option value="QUERETARO">QUERETARO</option>
+                    <option value="QUERETARO MOVIL">QUERETARO MOVIL</option>
+                    <option value="GUADALAJARA MOVIL">GUADALAJARA MOVIL</option>
+                    <option value="PUEBLA ANZURES">PUEBLA ANZURES</option>
+                    <option value="PUEBLA CHOLULA">PUEBLA CHOLULA</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Canal de Origen *</label>
+                <select class="form-control" id="demeritoCanalInput" required>
+                    <option value="" disabled selected>Selecciona un canal</option>
+                    <option value="Redes">Redes</option>
+                    <option value="Sucursal">Sucursal</option>
+                    <option value="Externo">Externo</option>
+                    <option value="Sucursal Móvil">Sucursal Móvil</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Responsable Involucrado *</label>
+                <input type="text" class="form-control" id="demeritoResponsableInput" placeholder="Nombre del responsable..." required>
+            </div>
+
+            <div class="form-group">
+                <label>Cliente Involucrado (Opcional)</label>
+                <input type="text" class="form-control" id="demeritoClienteInput" placeholder="Ej. Juan Pérez">
+            </div>
+
+            <div class="form-group">
+                <label>Categoría del Demérito *</label>
+                <select class="form-control" id="demeritoCategoriaInput" required>
+                    <!-- Dinámico -->
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Descripción Detallada *</label>
+                <textarea class="form-control" id="demeritoDescripcionInput" rows="3" placeholder="Detalle qué ocurrió... (obligatorio)" required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Nivel de Urgencia *</label>
+                <select class="form-control" id="demeritoGravedadInput" required>
+                    <option value="Baja">Baja</option>
+                    <option value="Media" selected>Media</option>
+                    <option value="Alta">Alta</option>
+                    <option value="Crítica">Crítica</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Estatus *</label>
+                <select class="form-control" id="demeritoEstatusInput" required>
+                    <option value="Pendiente" selected>Pendiente</option>
+                    <option value="En revisión">En revisión</option>
+                    <option value="Resuelto">Resuelto</option>
+                    <option value="Cerrado">Cerrado</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Observaciones de Cierre / Seguimiento</label>
+                <textarea class="form-control" id="demeritoObservacionesInput" rows="2" placeholder="Observaciones adicionales..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Usuario que Registra (Automático)</label>
+                <input type="text" class="form-control" id="demeritoUsuarioRegistraInput" readonly disabled style="opacity: 0.7; background: var(--bg-dark);">
+            </div>
+
+            <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                <button class="btn" style="flex: 2;" onclick="saveDemerito()">Guardar</button>
+                <button class="btn btn-outline" style="flex: 1;" onclick="closeDemeritoPanel()">Cancelar</button>
+                <button class="btn" style="flex: 1; background: var(--danger); border-color: var(--danger); display: none;"
+                    id="btnDeleteDemerito" onclick="deleteCurrentDemerito()">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide-over Panel (Categorias) -->
+    <div class="slide-over" id="categoriaCatalogPanel">
+        <div class="slide-header">
+            <h2 class="text-xl">Catálogo de Categorías</h2>
+            <button class="close-btn" onclick="closeCategoryCatalogPanel()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="slide-content">
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1.5rem;">Administra las categorías comerciales del sistema.</p>
+            
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
+                <input type="text" class="form-control" id="newCategoryInput" placeholder="Nueva categoría...">
+                <button class="btn" onclick="addNewCategory()" style="padding: 0.5rem 1rem;"><i class="fa-solid fa-plus"></i></button>
+            </div>
+
+            <div style="background: var(--bg-dark); border-radius: 0.5rem; border: 1px solid var(--border-color); overflow: hidden;">
+                <table class="data-table" style="box-shadow: none; border-radius: 0;">
+                    <thead>
+                        <tr>
+                            <th>Nombre de Categoría</th>
+                            <th style="width: 50px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="categoriesTableBody">
+                        <!-- Dinámico -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

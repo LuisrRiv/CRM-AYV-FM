@@ -591,3 +591,126 @@ body {
     flex: 0 0 260px;
   }
 }
+
+/* ==========================================
+   Deméritos Comerciales Custom Styles
+   ========================================== */
+.view-sub-section {
+  display: none;
+  animation: fadeIn 0.2s ease;
+}
+.view-sub-section.active {
+  display: block;
+}
+
+.kpi-card {
+  background: var(--bg-panel);
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color);
+  padding: 1.25rem 1rem;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.kpi-title {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.kpi-title i {
+  font-size: 0.85rem;
+}
+.kpi-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.alert-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.5rem;
+  border-left: 4px solid;
+  font-size: 0.85rem;
+  box-shadow: var(--shadow-sm);
+}
+.alert-card.critical {
+  border-left-color: var(--danger);
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--text-primary);
+}
+.alert-card.warning {
+  border-left-color: var(--warning);
+  background: rgba(245, 158, 11, 0.08);
+  color: var(--text-primary);
+}
+.alert-card i {
+  font-size: 1.1rem;
+  margin-top: 0.1rem;
+}
+
+/* Heatmap Grid */
+.heatmap-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--bg-panel);
+  font-size: 0.8rem;
+}
+.heatmap-table th, .heatmap-table td {
+  border: 1px solid var(--border-color);
+  padding: 0.6rem 0.5rem;
+  text-align: center;
+}
+.heatmap-table th {
+  background-color: var(--bg-panel-hover);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+.heatmap-table td.branch-label {
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: left;
+  background-color: var(--bg-panel-hover);
+  padding-left: 0.75rem;
+}
+.heatmap-cell {
+  font-weight: 700;
+  transition: all 0.2s;
+}
+.heatmap-cell:hover {
+  transform: scale(1.05);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2);
+}
+
+/* Sort Icons */
+thead th span {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-left: 0.25rem;
+}
+
+/* Responsive adjust for mobile */
+@media (max-width: 768px) {
+  .heatmap-card {
+    height: auto !important;
+  }
+}
+

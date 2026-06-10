@@ -1301,7 +1301,8 @@ function applyGlobalFilter() {
     }
     
     if (typeof updateDashboardCharts === 'function') updateDashboardCharts();
-    if (typeof renderDemeritosView === 'function') renderDemeritosView();
+    if (typeof renderAsistenciasView === 'function') renderAsistenciasView();
+    if (typeof renderDemeritosComercialesView === 'function') renderDemeritosComercialesView();
 }
 
 // Function to update Closer summaries
@@ -1726,12 +1727,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Authentication Logic
 // ==========================================
 const allowedUsers = [
-    { user: 'adminlr', pass: 'AdminLR123', initials: 'AD', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads', 'llamadas', 'demeritos'] },
-    { user: 'franco lozada', pass: 'Franco123', initials: 'FL', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos'] },
+    { user: 'adminlr', pass: 'AdminLR123', initials: 'AD', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
+    { user: 'franco lozada', pass: 'Franco123', initials: 'FL', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
     { user: 'fabiola mendoza', pass: 'Fabiola123', initials: 'FM', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas'], readOnly: true },
     { user: 'fatima morales', pass: 'Fatima123', initials: 'FT', panels: ['kanban', 'leads', 'assets', 'chat'], readOnly: true },
-    { user: 'marcela ramirez', pass: 'Marcela123', initials: 'MR', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos'] },
-    { user: 'martin orduña', pass: 'Martin123', initials: 'MO', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos'] },
+    { user: 'marcela ramirez', pass: 'Marcela123', initials: 'MR', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
+    { user: 'martin orduña', pass: 'Martin123', initials: 'MO', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
     { user: 'invitado', pass: 'invitado123', initials: 'IN', panels: ['dashboard', 'reportes'], readOnly: true }
 ];
 
@@ -1765,7 +1766,9 @@ function switchView(targetId) {
         } else if (targetId === 'registroLeads') {
             if (typeof updateRegistroLeadsView === 'function') updateRegistroLeadsView();
         } else if (targetId === 'demeritos') {
-            if (typeof renderDemeritosView === 'function') renderDemeritosView();
+            if (typeof renderAsistenciasView === 'function') renderAsistenciasView();
+        } else if (targetId === 'demeritosComerciales') {
+            if (typeof renderDemeritosComercialesView === 'function') renderDemeritosComercialesView();
         } else if (targetId === 'llamadas') {
             if (typeof fetchLlamadas === 'function') fetchLlamadas();
         }
@@ -2332,6 +2335,1579 @@ async function updateAsistencia(leadId, nuevaEtapa) {
         triggerNotification('Error', 'No se pudo guardar la evaluación.', 'danger');
     }
 }
+
+// ==========================================
+// Módulo de Deméritos Comerciales (BI Dashboard)
+// ==========================================
+let demeritosData = [];
+let categoriesData = [];
+let activeDemeritosSubTab = 'bi';
+let demeritoSortField = 'fecha';
+let demeritoSortOrder = 'desc';
+let currentDemeritoId = null;
+let filteredDemeritos = [];
+let demeritoStorageMode = 'supabase'; // 'supabase' or 'local'
+
+// Gráficos del Módulo
+let demeritoCharts = {
+    sucursal: null,
+    canal: null,
+    tendencia: null,
+    categoria: null,
+    urgencia: null,
+    responsables: null,
+    diasSinIncidencias: null
+};
+
+// Categorías predeterminadas
+const defaultCategories = [
+    'Mala atención',
+    'Seguimiento tardío',
+    'Información incorrecta',
+    'Error operativo',
+    'Queja de cliente',
+    'Incumplimiento de proceso',
+    'Documentación incompleta',
+    'Todo en orden',
+    'Otro'
+];
+
+// Mock data realista para carga inicial (Abril, Mayo, Junio 2026)
+const defaultDemeritos = [
+    {
+        id: 'mock-1',
+        fecha: '2026-04-12',
+        folio: 'DC-001',
+        sucursal: 'XALAPA 20 NOV',
+        canal: 'Redes',
+        responsable: 'franco lozada',
+        cliente: 'Carlos Mendoza',
+        categoria: 'Seguimiento tardío',
+        descripcion: 'El cliente reporta que tardaron más de 48 horas en responder su solicitud de cotización por WhatsApp, lo que causó molestia.',
+        gravedad: 'Media',
+        estatus: 'Cerrado',
+        observaciones: 'Se habló con Franco para agilizar respuestas. Cliente atendido y conforme.',
+        usuario_registra: 'adminlr',
+        created_at: '2026-04-12T10:30:00.000Z'
+    },
+    {
+        id: 'mock-2',
+        fecha: '2026-04-25',
+        folio: 'DC-002',
+        sucursal: 'VERACRUZ',
+        canal: 'Sucursal',
+        responsable: 'fabiola mendoza',
+        cliente: 'Ana Rodríguez',
+        categoria: 'Mala atención',
+        descripcion: 'Reclamación de mal trato en counter por parte del personal de recepción. El cliente se retiró molesto.',
+        gravedad: 'Alta',
+        estatus: 'Cerrado',
+        observaciones: 'Se aplicó retroalimentación y se envió carta de disculpa al cliente con una cortesía.',
+        usuario_registra: 'adminlr',
+        created_at: '2026-04-25T14:45:00.000Z'
+    },
+    {
+        id: 'mock-3',
+        fecha: '2026-05-03',
+        folio: 'DC-003',
+        sucursal: 'MONTERREY CENTRO',
+        canal: 'Externo',
+        responsable: 'martin orduña',
+        cliente: 'Roberto Gómez',
+        categoria: 'Error operativo',
+        descripcion: 'Captura incorrecta del año del vehículo en la solicitud de crédito, lo que retrasó la firma del contrato por 3 días.',
+        gravedad: 'Crítica',
+        estatus: 'Resuelto',
+        observaciones: 'Se corrigió la captura en sistema y se agilizó la dispersión de fondos de inmediato.',
+        usuario_registra: 'marcela ramirez',
+        created_at: '2026-05-03T11:15:00.000Z'
+    },
+    {
+        id: 'mock-4',
+        fecha: '2026-05-10',
+        folio: 'DC-004',
+        sucursal: 'ZAPOPAN',
+        canal: 'Sucursal Móvil',
+        responsable: 'marcela ramirez',
+        cliente: 'Sofia López',
+        categoria: 'Documentación incompleta',
+        descripcion: 'Faltó recabar la firma del cliente en el checklist de entrega física de la unidad.',
+        gravedad: 'Baja',
+        estatus: 'Cerrado',
+        observaciones: 'Se recabó la firma digital en el portal del cliente al día siguiente.',
+        usuario_registra: 'martin orduña',
+        created_at: '2026-05-10T16:20:00.000Z'
+    },
+    {
+        id: 'mock-5',
+        fecha: '2026-05-18',
+        folio: 'DC-005',
+        sucursal: 'QUERETARO',
+        canal: 'Redes',
+        responsable: 'fatima morales',
+        cliente: 'Luis Gutiérrez',
+        categoria: 'Información incorrecta',
+        descripcion: 'Se brindó información de enganche errónea por chat de Facebook. El cliente reclamó al llegar a sucursal.',
+        gravedad: 'Media',
+        estatus: 'Cerrado',
+        observaciones: 'Se respetó la oferta del chat comercial para no perder el trato de venta.',
+        usuario_registra: 'adminlr',
+        created_at: '2026-05-18T09:00:00.000Z'
+    },
+    {
+        id: 'mock-6',
+        fecha: '2026-05-22',
+        folio: 'DC-006',
+        sucursal: 'XALAPA ARAUCARIAS',
+        canal: 'Sucursal',
+        responsable: 'franco lozada',
+        cliente: '',
+        categoria: 'Incumplimiento de proceso',
+        descripcion: 'No se envió el reporte diario de llamadas y citas agendadas dentro del horario establecido.',
+        gravedad: 'Alta',
+        estatus: 'En revisión',
+        observaciones: 'Bajo análisis del encargado comercial de zona para determinar reincidencia.',
+        usuario_registra: 'adminlr',
+        created_at: '2026-05-22T20:05:00.000Z'
+    },
+    {
+        id: 'mock-7',
+        fecha: '2026-05-30',
+        folio: 'DC-007',
+        sucursal: 'MONTERREY TERRANOVA',
+        canal: 'Externo',
+        responsable: 'marcela ramirez',
+        cliente: 'Pedro Ramos',
+        categoria: 'Queja de cliente',
+        descripcion: 'Cliente molesto por recibir llamadas del call center fuera de horario hábil (10:00 PM).',
+        gravedad: 'Alta',
+        estatus: 'Resuelto',
+        observaciones: 'Se dio de baja el número telefónico del marcador automático del turno nocturno.',
+        usuario_registra: 'martin orduña',
+        created_at: '2026-05-30T22:30:00.000Z'
+    },
+    {
+        id: 'mock-8',
+        fecha: '2026-06-02',
+        folio: 'DC-008',
+        sucursal: 'PUEBLA ANZURES',
+        canal: 'Sucursal',
+        responsable: 'martin orduña',
+        cliente: 'Diana K.',
+        categoria: 'Mala atención',
+        descripcion: 'Discusión verbal subida de tono con un cliente en sala de espera por retraso en avalúo.',
+        gravedad: 'Crítica',
+        estatus: 'Pendiente',
+        observaciones: 'Citados responsable y gerente comercial para determinar sanción administrativa.',
+        usuario_registra: 'marcela ramirez',
+        created_at: '2026-06-02T13:40:00.000Z'
+    },
+    {
+        id: 'mock-9',
+        fecha: '2026-06-05',
+        folio: 'DC-009',
+        sucursal: 'GUADALAJARA MOVIL',
+        canal: 'Sucursal Móvil',
+        responsable: 'franco lozada',
+        cliente: 'Miguel Ortiz',
+        categoria: 'Error operativo',
+        descripcion: 'Retraso de más de 1 hora en la llegada del asesor móvil a la dirección del cliente sin avisar.',
+        gravedad: 'Media',
+        estatus: 'En revisión',
+        observaciones: 'Se reprogramó la cita y se ofreció un bono de gasolina de cortesía.',
+        usuario_registra: 'adminlr',
+        created_at: '2026-06-05T12:00:00.000Z'
+    },
+    {
+        id: 'mock-10',
+        fecha: '2026-06-07',
+        folio: 'DC-010',
+        sucursal: 'QUERETARO MOVIL',
+        canal: 'Redes',
+        responsable: 'fatima morales',
+        cliente: '',
+        categoria: 'Seguimiento tardío',
+        descripcion: 'Abandono de prospectos interesados de pauta publicitaria en Facebook sin contacto inicial por más de 36 horas.',
+        gravedad: 'Baja',
+        estatus: 'Pendiente',
+        observaciones: 'Asignando leads de urgencia para mitigar pérdida de conversión.',
+        usuario_registra: 'adminlr',
+        created_at: '2026-06-07T08:50:00.000Z'
+    },
+    {
+        id: 'mock-11',
+        fecha: '2026-06-08',
+        folio: 'DC-011',
+        sucursal: 'PUEBLA CHOLULA',
+        canal: 'Sucursal',
+        responsable: 'fabiola mendoza',
+        cliente: 'Raúl Torres',
+        categoria: 'Documentación incompleta',
+        descripcion: 'Expediente dispersado sin comprobante de domicilio digitalizado ni estado de cuenta verificado.',
+        gravedad: 'Media',
+        estatus: 'Pendiente',
+        observaciones: 'Solicitado al agente que complete la documentación antes del cierre de mes.',
+        usuario_registra: 'marcela ramirez',
+        created_at: '2026-06-08T15:20:00.000Z'
+    },
+    {
+        id: 'mock-12',
+        fecha: '2026-06-09',
+        folio: 'DC-012',
+        sucursal: 'XALAPA 20 NOV',
+        canal: 'Sucursal',
+        responsable: 'martin orduña',
+        cliente: 'Elena Torres',
+        categoria: 'Información incorrecta',
+        descripcion: 'Se le ofreció un simulador de financiamiento desactualizado con tasa no vigente.',
+        gravedad: 'Alta',
+        estatus: 'En revisión',
+        observaciones: 'Revisando opciones financieras para poder igualar o compensar la tasa ofrecida.',
+        usuario_registra: 'adminlr',
+        created_at: '2026-06-09T11:10:00.000Z'
+    }
+];
+
+// ==========================================
+// 1. Inicialización y Carga de Datos Resiliente
+// ==========================================
+async function initDemeritosModule() {
+    // Cargar Categorías
+    await dbLoadCategories();
+    // Cargar Deméritos
+    await dbLoadDemeritos();
+    
+    // Poblar los elementos select del HTML con las categorías
+    populateCategoriesSelects();
+    
+    // Aplicar filtros iniciales y renderizar
+    applyDemeritosFilters();
+    
+    // Suscripción Realtime si estamos en Supabase
+    if (demeritoStorageMode === 'supabase') {
+        supabaseClient
+            .channel('demeritos-changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'demeritos_comerciales' }, () => {
+                refreshDemeritosData();
+            })
+            .subscribe();
+    }
+}
+
+async function dbLoadCategories() {
+    try {
+        if (demeritoStorageMode === 'supabase') {
+            const { data, error } = await supabaseClient.from('demeritos_categorias').select('*').order('nombre');
+            if (error) {
+                // Si la tabla no existe (404/PGRST116), cambiamos a local
+                if (error.status === 404 || error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+                    console.warn('Tabla demeritos_categorias inexistente en Supabase. Cambiando a LocalStorage.');
+                }
+                loadCategoriesFromLocal();
+            } else {
+                categoriesData = data.map(c => c.nombre);
+                if (categoriesData.length === 0) {
+                    // Inicializar con las por defecto
+                    for (const cat of defaultCategories) {
+                        await supabaseClient.from('demeritos_categorias').insert([{ nombre: cat }]);
+                    }
+                    categoriesData = [...defaultCategories];
+                }
+            }
+        } else {
+            loadCategoriesFromLocal();
+        }
+    } catch (err) {
+        console.error(err);
+        loadCategoriesFromLocal();
+    }
+}
+
+function loadCategoriesFromLocal() {
+    const local = localStorage.getItem('crm-demeritos-categories');
+    if (local) {
+        categoriesData = JSON.parse(local);
+    } else {
+        categoriesData = [...defaultCategories];
+        localStorage.setItem('crm-demeritos-categories', JSON.stringify(categoriesData));
+    }
+}
+
+async function dbLoadDemeritos() {
+    try {
+        if (demeritoStorageMode === 'supabase') {
+            const { data, error } = await supabaseClient.from('demeritos_comerciales').select('*').order('created_at', { ascending: false });
+            if (error) {
+                if (error.status === 404 || error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+                    demeritoStorageMode = 'local';
+                }
+                loadDemeritosFromLocal();
+            } else {
+                demeritosData = data || [];
+                if (demeritosData.length === 0) {
+                    // Inicializar con la mock data inicial
+                    for (const item of defaultDemeritos) {
+                        const { id, ...cleanItem } = item; // Quitar ID simulado para autogeneración en BD
+                        await supabaseClient.from('demeritos_comerciales').insert([cleanItem]);
+                    }
+                    // Volver a leer
+                    const { data: refetched } = await supabaseClient.from('demeritos_comerciales').select('*').order('created_at', { ascending: false });
+                    demeritosData = refetched || [];
+                }
+            }
+        } else {
+            loadDemeritosFromLocal();
+        }
+    } catch (err) {
+        console.error(err);
+        loadDemeritosFromLocal();
+    }
+}
+
+function loadDemeritosFromLocal() {
+    const local = localStorage.getItem('crm-demeritos-data');
+    if (local) {
+        demeritosData = JSON.parse(local);
+    } else {
+        demeritosData = [...defaultDemeritos];
+        localStorage.setItem('crm-demeritos-data', JSON.stringify(demeritosData));
+    }
+}
+
+// Poblar los combos selectores con categorías del catálogo y responsables
+function populateCategoriesSelects() {
+    const formSelect = document.getElementById('demeritoCategoriaInput');
+    const filterSelect = document.getElementById('filterDemCategoria');
+    const respFilterSelect = document.getElementById('filterDemResponsable');
+    
+    if (formSelect) {
+        formSelect.innerHTML = '<option value="" disabled selected>Selecciona una categoría *</option>';
+        categoriesData.forEach(c => {
+            formSelect.innerHTML += `<option value="${c}">${c}</option>`;
+        });
+    }
+    
+    if (filterSelect) {
+        filterSelect.innerHTML = '<option value="all">Todas</option>';
+        categoriesData.forEach(c => {
+            filterSelect.innerHTML += `<option value="${c}">${c}</option>`;
+        });
+    }
+
+    if (respFilterSelect) {
+        const uniqueResps = Array.from(new Set(demeritosData.map(d => d.responsable).filter(Boolean))).sort();
+        respFilterSelect.innerHTML = '<option value="all">Todos</option>';
+        uniqueResps.forEach(r => {
+            respFilterSelect.innerHTML += `<option value="${r}">${r}</option>`;
+        });
+    }
+}
+
+// Actualizar datos
+async function refreshDemeritosData() {
+    await dbLoadCategories();
+    await dbLoadDemeritos();
+    populateCategoriesSelects();
+    applyDemeritosFilters();
+    triggerNotification('Datos Actualizados', 'La información de deméritos comerciales ha sido recargada.', 'info');
+}
+
+// ==========================================
+// 2. Control de Pestañas (Sub-Tabs)
+// ==========================================
+// 2. Control de Vistas
+// ==========================================
+
+// Funciones puente requeridas por app.js cuando se hace click en la barra lateral
+async function renderAsistenciasView() {
+    await renderAsistenciasSubView();
+}
+
+async function renderDemeritosComercialesView() {
+    await refreshDemeritosBIView();
+}
+
+// ==========================================
+// 3. Renderizado del Dashboard BI
+// ==========================================
+async function refreshDemeritosBIView() {
+    updateDemeritosKPIs(filteredDemeritos);
+    renderDemeritosAlerts(filteredDemeritos);
+    updateDemeritosCharts(filteredDemeritos);
+    renderDemeritosHeatmap(filteredDemeritos);
+    renderDemeritosListTable(filteredDemeritos);
+}
+
+// Carga de KPIs principales
+function updateDemeritosKPIs(data) {
+    const container = document.getElementById('demeritosKPIContainer');
+    if (!container) return;
+    
+    // Cálculos
+    const total = data.length;
+    
+    // Mes actual (Junio 2026)
+    const currentMonth = '2026-06';
+    const mesActual = data.filter(d => d.fecha && d.fecha.startsWith(currentMonth)).length;
+    
+    // Pendientes / En revisión
+    const pendientes = data.filter(d => ['Pendiente', 'En revisión'].includes(d.estatus)).length;
+    
+    // Resueltos / Cerrados
+    const resueltos = data.filter(d => ['Resuelto', 'Cerrado'].includes(d.estatus)).length;
+    
+    // Sucursal con más incidencias
+    const sucursalCounts = {};
+    data.forEach(d => sucursalCounts[d.sucursal] = (sucursalCounts[d.sucursal] || 0) + 1);
+    const topSucursal = Object.keys(sucursalCounts).sort((a,b) => sucursalCounts[b] - sucursalCounts[a])[0] || 'Ninguna';
+    
+    // Canal con más incidencias
+    const canalCounts = {};
+    data.forEach(d => canalCounts[d.canal] = (canalCounts[d.canal] || 0) + 1);
+    const topCanal = Object.keys(canalCounts).sort((a,b) => canalCounts[b] - canalCounts[a])[0] || 'Ninguno';
+    
+    // Categoría más frecuente
+    const catCounts = {};
+    data.forEach(d => catCounts[d.categoria] = (catCounts[d.categoria] || 0) + 1);
+    const topCat = Object.keys(catCounts).sort((a,b) => catCounts[b] - catCounts[a])[0] || 'Ninguna';
+
+    container.innerHTML = `
+        <div class="kpi-card">
+            <div class="kpi-title"><i class="fa-solid fa-folder-open" style="color: var(--accent-primary)"></i> Total Registros</div>
+            <div class="kpi-value">${total}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title"><i class="fa-solid fa-calendar-day" style="color: var(--accent-primary)"></i> Mes Actual</div>
+            <div class="kpi-value">${mesActual}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title"><i class="fa-solid fa-spinner fa-spin" style="color: var(--warning)"></i> Pendientes</div>
+            <div class="kpi-value" style="color: var(--warning)">${pendientes}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title"><i class="fa-solid fa-circle-check" style="color: var(--success)"></i> Resueltos</div>
+            <div class="kpi-value" style="color: var(--success)">${resueltos}</div>
+        </div>
+        <div class="kpi-card" title="${topSucursal}">
+            <div class="kpi-title"><i class="fa-solid fa-store" style="color: var(--danger)"></i> Sucursal Crítica</div>
+            <div class="kpi-value" style="font-size: 0.95rem; line-height: 1.5; color: var(--danger)">${topSucursal}</div>
+        </div>
+        <div class="kpi-card" title="${topCanal}">
+            <div class="kpi-title"><i class="fa-solid fa-share-nodes" style="color: var(--accent-primary)"></i> Canal Crítico</div>
+            <div class="kpi-value" style="font-size: 0.95rem; line-height: 1.5;">${topCanal}</div>
+        </div>
+        <div class="kpi-card" title="${topCat}">
+            <div class="kpi-title"><i class="fa-solid fa-tags" style="color: var(--accent-primary)"></i> Cat. Común</div>
+            <div class="kpi-value" style="font-size: 0.95rem; line-height: 1.5; white-space: normal;">${topCat}</div>
+        </div>
+    `;
+}
+
+// Algoritmo de Alertas en Tiempo Real
+function renderDemeritosAlerts(data) {
+    const container = document.getElementById('demeritosAlertsContainer');
+    if (!container) return;
+    
+    const currentMonthStr = '2026-06';
+    const alerts = [];
+    
+    // 1. Sucursal con > 3 deméritos en el mes actual
+    const sucursalCounts = {};
+    data.filter(d => d.fecha && d.fecha.startsWith(currentMonthStr)).forEach(d => {
+        sucursalCounts[d.sucursal] = (sucursalCounts[d.sucursal] || 0) + 1;
+    });
+    Object.keys(sucursalCounts).forEach(s => {
+        if (sucursalCounts[s] > 3) {
+            alerts.push({
+                type: 'critical',
+                icon: 'fa-triangle-exclamation',
+                text: `Alerta Sucursal: <strong>${s}</strong> supera el límite mensual con <strong>${sucursalCounts[s]}</strong> incidencias registradas en Junio.`
+            });
+        }
+    });
+    
+    // 2. Deméritos críticos sin resolver
+    const criticalUnresolved = data.filter(d => d.gravedad === 'Crítica' && ['Pendiente', 'En revisión'].includes(d.estatus));
+    criticalUnresolved.forEach(d => {
+        alerts.push({
+            type: 'critical',
+            icon: 'fa-circle-xmark',
+            text: `Incidencia Crítica Abierta: El folio <strong>${d.folio}</strong> (${d.sucursal}) está en estatus "${d.estatus}" y requiere atención inmediata. Responsable: <strong>${d.responsable}</strong>.`
+        });
+    });
+    
+    // 3. Colaborador con > 2 incidencias en el mes actual
+    const respCounts = {};
+    data.filter(d => d.fecha && d.fecha.startsWith(currentMonthStr)).forEach(d => {
+        if(d.responsable) respCounts[d.responsable] = (respCounts[d.responsable] || 0) + 1;
+    });
+    Object.keys(respCounts).forEach(r => {
+        if (respCounts[r] > 2) {
+            alerts.push({
+                type: 'warning',
+                icon: 'fa-user-ninja',
+                text: `Alerta Colaborador: <strong>${r}</strong> acumula <strong>${respCounts[r]}</strong> incidencias en el mes en curso. Recomendable revisión de desempeño.`
+            });
+        }
+    });
+    
+    // Renderizado
+    if (alerts.length === 0) {
+        container.innerHTML = `
+            <div class="alert-card warning" style="border-left-color: var(--success); background: rgba(16, 185, 129, 0.08); color: var(--text-primary);">
+                <i class="fa-solid fa-circle-check" style="color: var(--success);"></i>
+                <span>No hay alertas activas en la operación comercial. Excelente desempeño general.</span>
+            </div>
+        `;
+    } else {
+        container.innerHTML = '';
+        alerts.forEach(al => {
+            const card = document.createElement('div');
+            card.className = `alert-card ${al.type}`;
+            card.innerHTML = `<i class="fa-solid ${al.icon}"></i> <span>${al.text}</span>`;
+            container.appendChild(card);
+        });
+    }
+}
+
+// Tabla de Calor (Heatmap)
+function renderDemeritosHeatmap(data) {
+    const container = document.getElementById('demeritosHeatmapContainer');
+    if (!container) return;
+    
+    const sucursales = [
+        'XALAPA 20 NOV', 'XALAPA ARAUCARIAS', 'VERACRUZ', 'ZAPOPAN', 
+        'MONTERREY CENTRO', 'MONTERREY TERRANOVA', 'MONTERREY MOVIL', 
+        'QUERETARO', 'QUERETARO MOVIL', 'GUADALAJARA MOVIL', 
+        'PUEBLA ANZURES', 'PUEBLA CHOLULA'
+    ];
+    
+    const matrix = {};
+    sucursales.forEach(s => {
+        matrix[s] = { 'Baja': 0, 'Media': 0, 'Alta': 0, 'Crítica': 0, 'Total': 0 };
+    });
+    
+    data.forEach(d => {
+        if (matrix[d.sucursal] && matrix[d.sucursal][d.gravedad] !== undefined) {
+            matrix[d.sucursal][d.gravedad]++;
+            matrix[d.sucursal].Total++;
+        }
+    });
+    
+    let maxTotal = 1;
+    sucursales.forEach(s => {
+        if (matrix[s].Total > maxTotal) maxTotal = matrix[s].Total;
+    });
+    
+    let html = `<table class="heatmap-table">
+        <thead>
+            <tr>
+                <th style="text-align: left; padding-left: 0.75rem;">Sucursal</th>
+                <th style="width: 15%;">Baja</th>
+                <th style="width: 15%;">Media</th>
+                <th style="width: 15%;">Alta</th>
+                <th style="width: 15%;">Crítica</th>
+                <th style="width: 15%; background-color: var(--bg-dark);">Total</th>
+            </tr>
+        </thead>
+        <tbody>`;
+        
+    sucursales.forEach(s => {
+        const row = matrix[s];
+        const bgTotalOpacity = (row.Total / maxTotal) * 0.35; // max opacity 35%
+        const bgTotalColor = row.Total > 0 ? `background-color: rgba(239, 68, 68, ${bgTotalOpacity});` : '';
+        
+        html += `<tr>
+            <td class="branch-label">${s}</td>
+            <td class="heatmap-cell" style="${row.Baja > 0 ? 'background-color: rgba(16, 185, 129, 0.15); color: var(--success);' : 'color: var(--text-secondary); opacity: 0.5;'}">${row.Baja}</td>
+            <td class="heatmap-cell" style="${row.Media > 0 ? 'background-color: rgba(245, 158, 11, 0.15); color: var(--warning);' : 'color: var(--text-secondary); opacity: 0.5;'}">${row.Media}</td>
+            <td class="heatmap-cell" style="${row.Alta > 0 ? 'background-color: rgba(239, 68, 68, 0.15); color: var(--danger);' : 'color: var(--text-secondary); opacity: 0.5;'}">${row.Alta}</td>
+            <td class="heatmap-cell" style="${row.Crítica > 0 ? 'background-color: rgba(239, 68, 68, 0.3); color: var(--danger); text-shadow: 0 0 2px rgba(0,0,0,0.2); font-weight: 800;' : 'color: var(--text-secondary); opacity: 0.5;'}">${row.Crítica}</td>
+            <td style="font-weight: bold; ${bgTotalColor}">${row.Total}</td>
+        </tr>`;
+    });
+    
+    html += `</tbody></table>`;
+    container.innerHTML = html;
+}
+
+// ==========================================
+// 4. Renderizado de Gráficos (Chart.js)
+// ==========================================
+function updateDemeritosCharts(data) {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const labelColor = '#64748b';
+    const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
+    
+    // Colores corporativos del CRM
+    const primaryLime = '#bdfb2f';
+    const secondarySlate = '#94a3b8';
+    
+    // --- 1. Gráfico Sucursales (Barras Verticales) ---
+    const ctxSuc = document.getElementById('demeritosSucursalChart');
+    if (ctxSuc) {
+        const sucursales = ['XALAPA 20 NOV', 'XALAPA ARAUCARIAS', 'VERACRUZ', 'ZAPOPAN', 'MONTERREY CENTRO', 'MONTERREY TERRANOVA', 'MONTERREY MOVIL', 'QUERETARO', 'QUERETARO MOVIL', 'GUADALAJARA MOVIL', 'PUEBLA ANZURES', 'PUEBLA CHOLULA'];
+        const counts = sucursales.map(s => data.filter(d => d.sucursal === s).length);
+        
+        if (demeritoCharts.sucursal) demeritoCharts.sucursal.destroy();
+        demeritoCharts.sucursal = new Chart(ctxSuc, {
+            type: 'bar',
+            data: {
+                labels: sucursales.map(s => s.replace('MONTERREY', 'MTY').replace('XALAPA', 'XAL').replace('PUEBLA', 'PUE').replace('QUERETARO', 'QRO')),
+                datasets: [{
+                    label: 'Incidencias',
+                    data: counts,
+                    backgroundColor: primaryLime,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: labelColor, stepSize: 1 } },
+                    x: { grid: { display: false }, ticks: { color: labelColor, maxRotation: 45, minRotation: 45, font: { size: 9 } } }
+                }
+            }
+        });
+    }
+
+    // --- 2. Gráfico Canal (Pastel / Pie) ---
+    const ctxCan = document.getElementById('demeritosCanalChart');
+    if (ctxCan) {
+        const canales = ['Redes', 'Sucursal', 'Externo', 'Sucursal Móvil'];
+        const counts = canales.map(c => data.filter(d => d.canal === c).length);
+        
+        if (demeritoCharts.canal) demeritoCharts.canal.destroy();
+        demeritoCharts.canal = new Chart(ctxCan, {
+            type: 'pie',
+            data: {
+                labels: canales,
+                datasets: [{
+                    data: counts,
+                    backgroundColor: ['#6366f1', primaryLime, '#ec4899', '#f59e0b'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: labelColor, boxWidth: 10, font: { size: 10 } } }
+                }
+            }
+        });
+    }
+
+    // --- 3. Gráfico Tendencia Mensual (Líneas) ---
+    const ctxTen = document.getElementById('demeritosTendenciaChart');
+    if (ctxTen) {
+        const meses = ['2026-04', '2026-05', '2026-06'];
+        const labels = ['Abril 2026', 'Mayo 2026', 'Junio 2026'];
+        const counts = meses.map(m => data.filter(d => d.fecha && d.fecha.startsWith(m)).length);
+        
+        if (demeritoCharts.tendencia) demeritoCharts.tendencia.destroy();
+        demeritoCharts.tendencia = new Chart(ctxTen, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Incidencias',
+                    data: counts,
+                    borderColor: primaryLime,
+                    backgroundColor: 'rgba(189, 251, 47, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    borderWidth: 3,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: primaryLime,
+                    pointBorderWidth: 2,
+                    pointRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: labelColor, stepSize: 1 } },
+                    x: { grid: { color: gridColor }, ticks: { color: labelColor } }
+                }
+            }
+        });
+    }
+
+    // --- 4. Gráfico por Categoría (Barras Horizontales Ordenadas) ---
+    const ctxCat = document.getElementById('demeritosCategoriaChart');
+    if (ctxCat) {
+        const catCounts = {};
+        categoriesData.forEach(c => catCounts[c] = 0);
+        data.forEach(d => {
+            if (catCounts[d.categoria] !== undefined) catCounts[d.categoria]++;
+            else catCounts['Otro'] = (catCounts['Otro'] || 0) + 1;
+        });
+        
+        const sortedCats = Object.keys(catCounts).sort((a,b) => catCounts[b] - catCounts[a]);
+        const counts = sortedCats.map(c => catCounts[c]);
+        
+        if (demeritoCharts.categoria) demeritoCharts.categoria.destroy();
+        demeritoCharts.categoria = new Chart(ctxCat, {
+            type: 'bar',
+            data: {
+                labels: sortedCats,
+                datasets: [{
+                    data: counts,
+                    backgroundColor: 'rgba(99, 102, 241, 0.85)',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: labelColor, stepSize: 1 } },
+                    y: { grid: { display: false }, ticks: { color: labelColor, font: { size: 9 } } }
+                }
+            }
+        });
+    }
+
+    // --- 5. Urgencia (Dona / Doughnut) ---
+    const ctxGrav = document.getElementById('demeritosUrgenciaChart');
+    if (ctxGrav) {
+        const gravedades = ['Baja', 'Media', 'Alta', 'Crítica'];
+        const counts = gravedades.map(g => data.filter(d => d.gravedad === g).length);
+        
+        if (demeritoCharts.urgencia) demeritoCharts.urgencia.destroy();
+        demeritoCharts.urgencia = new Chart(ctxGrav, {
+            type: 'doughnut',
+            data: {
+                labels: gravedades,
+                datasets: [{
+                    data: counts,
+                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#7f1d1d'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '60%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: labelColor, boxWidth: 10, font: { size: 10 } } }
+                }
+            }
+        });
+    }
+
+    // --- 6. Top Responsables (Barras Verticales) ---
+    const ctxResp = document.getElementById('demeritosResponsablesChart');
+    if (ctxResp) {
+        const respCounts = {};
+        data.forEach(d => {
+            if(d.responsable) respCounts[d.responsable] = (respCounts[d.responsable] || 0) + 1;
+        });
+        
+        const sortedResps = Object.keys(respCounts).sort((a,b) => respCounts[b] - respCounts[a]).slice(0, 5);
+        const counts = sortedResps.map(r => respCounts[r]);
+        
+        if (demeritoCharts.responsables) demeritoCharts.responsables.destroy();
+        demeritoCharts.responsables = new Chart(ctxResp, {
+            type: 'bar',
+            data: {
+                labels: sortedResps.map(r => r.split(' ')[0]), // Primer nombre para compactar
+                datasets: [{
+                    data: counts,
+                    backgroundColor: '#fb923c',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: labelColor, stepSize: 1 } },
+                    x: { grid: { display: false }, ticks: { color: labelColor } }
+                }
+            }
+        });
+    }
+
+    // --- 8. Días sin Incidencias por Sucursal (Barras Horizontales) ---
+    const ctxDias = document.getElementById('demeritosDiasSinIncidenciasChart');
+    if (ctxDias) {
+        const sucursales = ['XALAPA 20 NOV', 'XALAPA ARAUCARIAS', 'VERACRUZ', 'ZAPOPAN', 'MONTERREY CENTRO', 'MONTERREY TERRANOVA', 'MONTERREY MOVIL', 'QUERETARO', 'QUERETARO MOVIL', 'GUADALAJARA MOVIL', 'PUEBLA ANZURES', 'PUEBLA CHOLULA'];
+        const now = new Date();
+        const diasSinIncidenciasData = sucursales.map(s => {
+            const branchDemeritos = demeritosData.filter(d => d.sucursal === s && d.fecha);
+            if (branchDemeritos.length === 0) return 30; // 30+ días
+            const dates = branchDemeritos.map(d => new Date(d.fecha + 'T12:00:00'));
+            const latestDate = new Date(Math.max(...dates));
+            const diffTime = now - latestDate;
+            const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+            return diffDays;
+        });
+
+        if (demeritoCharts.diasSinIncidencias) demeritoCharts.diasSinIncidencias.destroy();
+        demeritoCharts.diasSinIncidencias = new Chart(ctxDias, {
+            type: 'bar',
+            data: {
+                labels: sucursales.map(s => s.replace('MONTERREY', 'MTY').replace('XALAPA', 'XAL').replace('PUEBLA', 'PUE').replace('QUERETARO', 'QRO')),
+                datasets: [{
+                    data: diasSinIncidenciasData,
+                    backgroundColor: '#10b981',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: labelColor, stepSize: 5 } },
+                    y: { grid: { display: false }, ticks: { color: labelColor, font: { size: 9 } } }
+                }
+            }
+        });
+    }
+}
+
+// ==========================================
+// 5. Filtros Avanzados y Búsqueda Rápida
+// ==========================================
+function applyDemeritosFilters() {
+    const fInicio = document.getElementById('filterDemFechaInicio')?.value;
+    const fFin = document.getElementById('filterDemFechaFin')?.value;
+    const sucursal = document.getElementById('filterDemSucursal')?.value || 'all';
+    const canal = document.getElementById('filterDemCanal')?.value || 'all';
+    const categoria = document.getElementById('filterDemCategoria')?.value || 'all';
+    const responsable = document.getElementById('filterDemResponsable')?.value || 'all';
+    const gravedad = document.getElementById('filterDemGravedad')?.value || 'all';
+    const estatus = document.getElementById('filterDemEstatus')?.value || 'all';
+    const search = document.getElementById('demeritosSearchInput')?.value?.toLowerCase()?.trim() || '';
+    const globalMonth = document.getElementById('globalMonthFilter')?.value || 'all';
+    
+    filteredDemeritos = demeritosData.filter(d => {
+        // Filtro de mes global
+        if (globalMonth !== 'all') {
+            if (!d.fecha || !d.fecha.startsWith(globalMonth)) return false;
+        }
+
+        // Filtro Fechas
+        if (fInicio && d.fecha < fInicio) return false;
+        if (fFin && d.fecha > fFin) return false;
+        
+        // Filtros directos
+        if (sucursal !== 'all' && d.sucursal !== sucursal) return false;
+        if (canal !== 'all' && d.canal !== canal) return false;
+        if (categoria !== 'all' && d.categoria !== categoria) return false;
+        if (responsable !== 'all' && d.responsable !== responsable) return false;
+        if (gravedad !== 'all' && d.gravedad !== gravedad) return false;
+        if (estatus !== 'all' && d.estatus !== estatus) return false;
+        
+        // Búsqueda rápida
+        if (search) {
+            const matchesSearch = 
+                d.folio?.toLowerCase()?.includes(search) ||
+                d.responsable?.toLowerCase()?.includes(search) ||
+                d.cliente?.toLowerCase()?.includes(search) ||
+                d.categoria?.toLowerCase()?.includes(search) ||
+                d.descripcion?.toLowerCase()?.includes(search) ||
+                d.observaciones?.toLowerCase()?.includes(search) ||
+                d.sucursal?.toLowerCase()?.includes(search);
+            if (!matchesSearch) return false;
+        }
+        
+        return true;
+    });
+    
+    // Aplicar Ordenamiento
+    filteredDemeritos.sort((a, b) => {
+        let valA = a[demeritoSortField] || '';
+        let valB = b[demeritoSortField] || '';
+        
+        if (typeof valA === 'string') {
+            valA = valA.toLowerCase();
+            valB = valB.toLowerCase();
+        }
+        
+        if (valA < valB) return demeritoSortOrder === 'asc' ? -1 : 1;
+        if (valA > valB) return demeritoSortOrder === 'asc' ? 1 : -1;
+        return 0;
+    });
+    
+    // Refrescar Visuals
+    updateDemeritosKPIs(filteredDemeritos);
+    renderDemeritosAlerts(filteredDemeritos);
+    updateDemeritosCharts(filteredDemeritos);
+    renderDemeritosHeatmap(filteredDemeritos);
+    renderDemeritosListTable(filteredDemeritos);
+}
+
+function clearDemeritosFilters() {
+    const fInicio = document.getElementById('filterDemFechaInicio');
+    const fFin = document.getElementById('filterDemFechaFin');
+    const sucursal = document.getElementById('filterDemSucursal');
+    const canal = document.getElementById('filterDemCanal');
+    const categoria = document.getElementById('filterDemCategoria');
+    const responsable = document.getElementById('filterDemResponsable');
+    const gravedad = document.getElementById('filterDemGravedad');
+    const estatus = document.getElementById('filterDemEstatus');
+    const search = document.getElementById('demeritosSearchInput');
+    
+    if (fInicio) fInicio.value = '';
+    if (fFin) fFin.value = '';
+    if (sucursal) sucursal.value = 'all';
+    if (canal) canal.value = 'all';
+    if (categoria) categoria.value = 'all';
+    if (responsable) responsable.value = 'all';
+    if (gravedad) gravedad.value = 'all';
+    if (estatus) estatus.value = 'all';
+    if (search) search.value = '';
+    
+    applyDemeritosFilters();
+}
+
+function sortDemeritos(field) {
+    if (demeritoSortField === field) {
+        demeritoSortOrder = demeritoSortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+        demeritoSortField = field;
+        demeritoSortOrder = 'desc'; // Por defecto descendente
+    }
+    
+    // Actualizar íconos
+    const fields = ['fecha', 'folio', 'sucursal', 'canal', 'categoria', 'gravedad', 'estatus', 'responsable', 'usuario_registra'];
+    fields.forEach(f => {
+        const el = document.getElementById(`sort-icon-${f}`);
+        if (el) {
+            if (f === demeritoSortField) {
+                el.innerHTML = demeritoSortOrder === 'asc' ? '<i class="fa-solid fa-sort-up" style="color: var(--accent-primary)"></i>' : '<i class="fa-solid fa-sort-down" style="color: var(--accent-primary)"></i>';
+            } else {
+                el.innerHTML = '<i class="fa-solid fa-sort"></i>';
+            }
+        }
+    });
+    
+    applyDemeritosFilters();
+}
+
+// ==========================================
+// 6. Tabla de Consulta
+// ==========================================
+function renderDemeritosListTable(data) {
+    const tbody = document.getElementById('demeritosListTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-secondary); padding: 2rem;">No se encontraron deméritos con los filtros seleccionados.</td></tr>`;
+        return;
+    }
+    
+    data.forEach(d => {
+        const tr = document.createElement('tr');
+        tr.onclick = () => openDemeritoPanel(d);
+        
+        // Formatear Fecha
+        let localDateStr = d.fecha || '';
+        try {
+            const parts = d.fecha.split('-');
+            if(parts.length === 3) {
+                localDateStr = `${parts[2]}/${parts[1]}/${parts[0]}`;
+            }
+        } catch(e){}
+        
+        // Estatus Badge
+        let badgeEstatus = 'badge enproceso';
+        if (d.estatus === 'Pendiente') badgeEstatus = 'badge detenido';
+        if (d.estatus === 'En revisión') badgeEstatus = 'badge noasistio';
+        if (d.estatus === 'Resuelto') badgeEstatus = 'badge cita';
+        if (d.estatus === 'Cerrado') badgeEstatus = 'badge dispersado';
+        
+        // Gravedad Badge
+        let badgeGrav = 'badge enproceso';
+        if (d.gravedad === 'Baja') badgeGrav = 'badge enproceso';
+        if (d.gravedad === 'Media') badgeGrav = 'badge detenido';
+        if (d.gravedad === 'Alta') badgeGrav = 'badge noasistio';
+        if (d.gravedad === 'Crítica') badgeGrav = 'badge rechazado';
+        
+        tr.innerHTML = `
+            <td>${localDateStr}</td>
+            <td class="font-medium">${d.folio || ''}</td>
+            <td><span style="font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); background: var(--bg-dark); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">${d.sucursal || ''}</span></td>
+            <td>${d.canal || ''}</td>
+            <td>${d.categoria || ''}</td>
+            <td><span class="${badgeGrav}">${d.gravedad || ''}</span></td>
+            <td><span class="${badgeEstatus}">${d.estatus || ''}</span></td>
+            <td class="font-medium" style="text-transform: capitalize;">${d.responsable || ''}</td>
+            <td><span style="font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); background: var(--bg-dark); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">${d.usuario_registra || ''}</span></td>
+            <td>
+                <button onclick="event.stopPropagation(); deleteDemerito('${d.id}')" style="color: var(--danger); background: none; border: none; cursor: pointer; padding: 0.25rem;">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// ==========================================
+// 7. Modales y Formulario (Slide-over)
+// ==========================================
+function openNewDemeritoPanel() {
+    currentDemeritoId = null;
+    document.getElementById('demeritoPanelTitle').innerText = "Registrar Demérito";
+    document.getElementById('demeritoIdInput').value = "";
+    
+    // Auto-generación del folio
+    const nextNum = demeritosData.reduce((max, d) => {
+        if(d.folio && d.folio.startsWith('DC-')) {
+            const num = parseInt(d.folio.substring(3)) || 0;
+            return num > max ? num : max;
+        }
+        return max;
+    }, 0) + 1;
+    const nextFolio = `DC-${String(nextNum).padStart(3, '0')}`;
+    
+    document.getElementById('demeritoFolioInput').value = nextFolio;
+    
+    // Configurar hoy por defecto
+    const today = new Date();
+    const offset = today.getTimezoneOffset();
+    const localDate = new Date(today.getTime() - (offset*60*1000));
+    document.getElementById('demeritoFechaInput').value = localDate.toISOString().split('T')[0];
+    
+    document.getElementById('demeritoSucursalInput').value = "";
+    document.getElementById('demeritoCanalInput').value = "";
+    document.getElementById('demeritoResponsableInput').value = "";
+    document.getElementById('demeritoClienteInput').value = "";
+    document.getElementById('demeritoCategoriaInput').value = "";
+    document.getElementById('demeritoDescripcionInput').value = "";
+    document.getElementById('demeritoGravedadInput').value = "Media";
+    document.getElementById('demeritoEstatusInput').value = "Pendiente";
+    document.getElementById('demeritoObservacionesInput').value = "";
+    
+    // Configurar el usuario activo que registra
+    const loggedInUser = localStorage.getItem('crm-logged-in') || 'adminlr';
+    document.getElementById('demeritoUsuarioRegistraInput').value = loggedInUser;
+    
+    const btnDel = document.getElementById('btnDeleteDemerito');
+    if (btnDel) btnDel.style.display = 'none';
+    
+    document.getElementById('demeritoFormPanel').classList.add('open');
+}
+
+function openDemeritoPanel(d) {
+    currentDemeritoId = d.id;
+    document.getElementById('demeritoPanelTitle').innerText = "Editar Demérito";
+    document.getElementById('demeritoIdInput').value = d.id;
+    document.getElementById('demeritoFolioInput').value = d.folio;
+    document.getElementById('demeritoFechaInput').value = d.fecha;
+    document.getElementById('demeritoSucursalInput').value = d.sucursal;
+    document.getElementById('demeritoCanalInput').value = d.canal;
+    document.getElementById('demeritoResponsableInput').value = d.responsable;
+    document.getElementById('demeritoClienteInput').value = d.cliente || "";
+    document.getElementById('demeritoCategoriaInput').value = d.categoria;
+    document.getElementById('demeritoDescripcionInput').value = d.descripcion || "";
+    document.getElementById('demeritoGravedadInput').value = d.gravedad;
+    document.getElementById('demeritoEstatusInput').value = d.estatus;
+    document.getElementById('demeritoObservacionesInput').value = d.observaciones || "";
+    document.getElementById('demeritoUsuarioRegistraInput').value = d.usuario_registra;
+    
+    const btnDel = document.getElementById('btnDeleteDemerito');
+    if (btnDel) btnDel.style.display = 'block';
+    
+    document.getElementById('demeritoFormPanel').classList.add('open');
+}
+
+function closeDemeritoPanel() {
+    document.getElementById('demeritoFormPanel').classList.remove('open');
+}
+
+async function saveDemerito() {
+    const folio = document.getElementById('demeritoFolioInput').value;
+    const fecha = document.getElementById('demeritoFechaInput').value;
+    const sucursal = document.getElementById('demeritoSucursalInput').value;
+    const canal = document.getElementById('demeritoCanalInput').value;
+    const responsable = document.getElementById('demeritoResponsableInput').value;
+    const cliente = document.getElementById('demeritoClienteInput').value.trim();
+    const categoria = document.getElementById('demeritoCategoriaInput').value;
+    const descripcion = document.getElementById('demeritoDescripcionInput').value.trim();
+    const gravedad = document.getElementById('demeritoGravedadInput').value;
+    const estatus = document.getElementById('demeritoEstatusInput').value;
+    const observaciones = document.getElementById('demeritoObservacionesInput').value.trim();
+    const usuarioRegistra = document.getElementById('demeritoUsuarioRegistraInput').value;
+    
+    if (!fecha || !sucursal || !canal || !responsable || !categoria || !descripcion || !gravedad || !estatus) {
+        triggerNotification('Advertencia', 'Por favor, complete todos los campos obligatorios (*).', 'warning');
+        return;
+    }
+    
+    const demData = {
+        folio: folio,
+        fecha: fecha,
+        sucursal: sucursal,
+        canal: canal,
+        responsable: responsable,
+        cliente: cliente,
+        categoria: categoria,
+        descripcion: descripcion,
+        gravedad: gravedad,
+        estatus: estatus,
+        observaciones: observaciones,
+        usuario_registra: usuarioRegistra
+    };
+    
+    try {
+        if (demeritoStorageMode === 'supabase') {
+            if (currentDemeritoId) {
+                const { error } = await supabaseClient.from('demeritos_comerciales').update(demData).eq('id', currentDemeritoId);
+                if (error) throw error;
+                triggerNotification('Éxito', 'Demérito actualizado correctamente', 'success');
+            } else {
+                const { error } = await supabaseClient.from('demeritos_comerciales').insert([demData]);
+                if (error) throw error;
+                triggerNotification('Éxito', 'Demérito registrado correctamente', 'success');
+            }
+        } else {
+            // LocalStorage mode
+            if (currentDemeritoId) {
+                const index = demeritosData.findIndex(x => x.id === currentDemeritoId);
+                if (index !== -1) {
+                    demeritosData[index] = { ...demeritosData[index], ...demData };
+                }
+            } else {
+                const newRecord = {
+                    id: 'local-' + Date.now(),
+                    ...demData,
+                    created_at: new Date().toISOString()
+                };
+                demeritosData.unshift(newRecord);
+            }
+            localStorage.setItem('crm-demeritos-data', JSON.stringify(demeritosData));
+            triggerNotification('Guardado Local', 'Demérito comercial guardado en el almacenamiento local.', 'success');
+        }
+        
+        closeDemeritoPanel();
+        await refreshDemeritosData();
+        
+    } catch (err) {
+        console.error(err);
+        triggerNotification('Error', 'No se pudo guardar la información.', 'danger');
+    }
+}
+
+async function deleteCurrentDemerito() {
+    if (currentDemeritoId) {
+        await deleteDemerito(currentDemeritoId);
+        closeDemeritoPanel();
+    }
+}
+
+async function deleteDemerito(id) {
+    if (!confirm('¿Estás seguro de que deseas eliminar este demérito comercial?')) return;
+    
+    try {
+        if (demeritoStorageMode === 'supabase') {
+            const { error } = await supabaseClient.from('demeritos_comerciales').delete().eq('id', id);
+            if (error) throw error;
+            triggerNotification('Éxito', 'Demérito comercial eliminado', 'success');
+        } else {
+            demeritosData = demeritosData.filter(x => x.id !== id);
+            localStorage.setItem('crm-demeritos-data', JSON.stringify(demeritosData));
+            triggerNotification('Eliminado Local', 'Registro eliminado del almacenamiento local.', 'success');
+        }
+        
+        await refreshDemeritosData();
+    } catch (err) {
+        console.error(err);
+        triggerNotification('Error', 'No se pudo eliminar el registro.', 'danger');
+    }
+}
+
+// ==========================================
+// 8. Control del Catálogo de Categorías
+// ==========================================
+function openCategoryCatalogPanel() {
+    renderCategoryCatalogList();
+    document.getElementById('categoriaCatalogPanel').classList.add('open');
+}
+
+function closeCategoryCatalogPanel() {
+    document.getElementById('categoriaCatalogPanel').classList.remove('open');
+}
+
+function renderCategoryCatalogList() {
+    const tbody = document.getElementById('categoriesTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    categoriesData.forEach(cat => {
+        const tr = document.createElement('tr');
+        // No se permite eliminar las categorías base por defecto para asegurar coherencia
+        const isDefault = defaultCategories.includes(cat);
+        const actionHtml = isDefault 
+            ? `<span style="font-size:0.7rem; color:var(--text-secondary); font-style:italic;">Sistema</span>`
+            : `<button onclick="deleteCategory('${cat}')" style="color: var(--danger); background: none; border: none; cursor: pointer; padding: 0.25rem;">
+                   <i class="fa-solid fa-trash-can"></i>
+               </button>`;
+               
+        tr.innerHTML = `
+            <td class="font-medium">${cat}</td>
+            <td style="text-align: center;">${actionHtml}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+async function addNewCategory() {
+    const input = document.getElementById('newCategoryInput');
+    const name = input?.value?.trim();
+    
+    if (!name) return;
+    
+    if (categoriesData.map(c => c.toLowerCase()).includes(name.toLowerCase())) {
+        triggerNotification('Advertencia', 'Esta categoría ya existe.', 'warning');
+        return;
+    }
+    
+    try {
+        if (demeritoStorageMode === 'supabase') {
+            const { error } = await supabaseClient.from('demeritos_categorias').insert([{ nombre: name }]);
+            if (error) throw error;
+        } else {
+            categoriesData.push(name);
+            localStorage.setItem('crm-demeritos-categories', JSON.stringify(categoriesData));
+        }
+        
+        if (input) input.value = '';
+        triggerNotification('Éxito', 'Categoría agregada correctamente.', 'success');
+        
+        await dbLoadCategories();
+        populateCategoriesSelects();
+        renderCategoryCatalogList();
+        
+    } catch (err) {
+        console.error(err);
+        triggerNotification('Error', 'No se pudo guardar la categoría.', 'danger');
+    }
+}
+
+async function deleteCategory(category) {
+    if (defaultCategories.includes(category)) {
+        triggerNotification('Error', 'No se pueden eliminar las categorías base del sistema.', 'danger');
+        return;
+    }
+    
+    if (!confirm(`¿Estás seguro de que deseas eliminar la categoría "${category}"?`)) return;
+    
+    try {
+        if (demeritoStorageMode === 'supabase') {
+            const { error } = await supabaseClient.from('demeritos_categorias').delete().eq('nombre', category);
+            if (error) throw error;
+        } else {
+            categoriesData = categoriesData.filter(c => c !== category);
+            localStorage.setItem('crm-demeritos-categories', JSON.stringify(categoriesData));
+        }
+        
+        triggerNotification('Éxito', 'Categoría eliminada.', 'success');
+        
+        await dbLoadCategories();
+        populateCategoriesSelects();
+        renderCategoryCatalogList();
+        
+    } catch (err) {
+        console.error(err);
+        triggerNotification('Error', 'No se pudo eliminar la categoría.', 'danger');
+    }
+}
+
+// ==========================================
+// 9. Exportación a Excel y PDF
+// ==========================================
+function exportDemeritosToExcel() {
+    const btn = document.getElementById('btnExportDemExcel');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generando...';
+    }
+    
+    try {
+        const rows = filteredDemeritos.map(d => ({
+            'FECHA': d.fecha || '',
+            'FOLIO': d.folio || '',
+            'SUCURSAL': d.sucursal || '',
+            'CANAL': d.canal || '',
+            'CATEGORÍA': d.categoria || '',
+            'URGENCIA': d.gravedad || '',
+            'ESTATUS': d.estatus || '',
+            'RESPONSABLE': d.responsable || '',
+            'DESCRIPCIÓN': d.descripcion || '',
+            'CLIENTE': d.cliente || '',
+            'REGISTRÓ': d.usuario_registra || '',
+            'OBSERVACIONES': d.observaciones || ''
+        }));
+        
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(rows);
+        
+        // Ajustar anchos
+        ws['!cols'] = [
+            { wch: 12 }, // FECHA
+            { wch: 10 }, // FOLIO
+            { wch: 22 }, // SUCURSAL
+            { wch: 15 }, // CANAL
+            { wch: 20 }, // CATEGORÍA
+            { wch: 12 }, // URGENCIA
+            { wch: 12 }, // ESTATUS
+            { wch: 18 }, // RESPONSABLE
+            { wch: 40 }, // DESCRIPCIÓN
+            { wch: 20 }, // CLIENTE
+            { wch: 15 }, // REGISTRÓ
+            { wch: 30 }  // OBSERVACIONES
+        ];
+        
+        XLSX.utils.book_append_sheet(wb, ws, 'Deméritos Comerciales');
+        
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
+        const fileName = `Reporte_Demeritos_${dateStr}.xlsx`;
+        
+        XLSX.writeFile(wb, fileName);
+        
+        triggerNotification('Excel Descargado', `${rows.length} deméritos exportados en "${fileName}"`, 'success');
+    } catch (err) {
+        console.error(err);
+        triggerNotification('Error', 'No se pudo exportar a Excel.', 'warning');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-file-excel"></i> Excel';
+        }
+    }
+}
+
+async function exportDemeritosToPDF() {
+    const btn = document.getElementById('btnExportDemPDF');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generando...';
+    }
+    
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4'); // A4 Horizontal
+        
+        // Configurar título ejecutivo
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(18);
+        doc.setTextColor(22, 25, 37); // Azul Oscuro Corporativo
+        doc.text("Reporte de Deméritos Comerciales", 14, 15);
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        
+        const filterState = [];
+        const sucVal = document.getElementById('filterDemSucursal')?.value;
+        if(sucVal && sucVal !== 'all') filterState.push(`Sucursal: ${sucVal}`);
+        const gravVal = document.getElementById('filterDemGravedad')?.value;
+        if(gravVal && gravVal !== 'all') filterState.push(`Urgencia: ${gravVal}`);
+        const estVal = document.getElementById('filterDemEstatus')?.value;
+        if(estVal && estVal !== 'all') filterState.push(`Estatus: ${estVal}`);
+        
+        const filterStr = filterState.length > 0 ? ` [Filtros: ${filterState.join(', ')}]` : '';
+        
+        doc.text(`Generado el: ${new Date().toLocaleString('es-MX')} por ${localStorage.getItem('crm-logged-in') || 'adminlr'}${filterStr}`, 14, 21);
+        
+        // Formatear filas
+        const tableHeaders = [['Fecha', 'Folio', 'Sucursal', 'Canal', 'Categoría', 'Urgencia', 'Estatus', 'Responsable', 'Registró']];
+        const tableRows = filteredDemeritos.map(d => [
+            d.fecha ? d.fecha.split('-').reverse().join('/') : '',
+            d.folio || '',
+            d.sucursal || '',
+            d.canal || '',
+            d.categoria || '',
+            d.gravedad || '',
+            d.estatus || '',
+            d.responsable || '',
+            d.usuario_registra || ''
+        ]);
+        
+        doc.autoTable({
+            head: tableHeaders,
+            body: tableRows,
+            startY: 25,
+            theme: 'striped',
+            headStyles: { fillColor: [22, 25, 37], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
+            alternateRowStyles: { fillColor: [248, 250, 252] },
+            styles: { fontSize: 8.5, cellPadding: 2.5, font: 'helvetica' },
+            margin: { left: 14, right: 14 }
+        });
+        
+        const now = new Date();
+        const dateStr = now.toISOString().slice(0,10);
+        doc.save(`Reporte_Demeritos_${dateStr}.pdf`);
+        
+        triggerNotification('PDF Descargado', `Se exportaron ${filteredDemeritos.length} registros en formato PDF.`, 'success');
+        
+    } catch (err) {
+        console.error(err);
+        triggerNotification('Error', 'No se pudo exportar a PDF.', 'warning');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> PDF';
+        }
+    }
+}
+
+// ==========================================
+// 10. Asistencias de Citas (Sub-vista Anterior)
+// ==========================================
+async function renderAsistenciasSubView() {
+    try {
+        const { data, error } = await supabaseClient
+            .from('leads')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const filterEl = document.getElementById('globalMonthFilter');
+        const filterVal = filterEl ? filterEl.value : 'all';
+        
+        let filteredData = data;
+        if (filterVal !== 'all') {
+            filteredData = data.filter(lead => lead.created_at && lead.created_at.startsWith(filterVal));
+        }
+
+        const tbody = document.getElementById('demeritosTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        const citas = filteredData.filter(l => l.etapa === 'CITA');
+        
+        if(citas.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 2rem;">No hay citas pendientes de evaluación para este mes.</td></tr>`;
+        }
+
+        citas.forEach(lead => {
+            const tr = document.createElement('tr');
+            const dDate = lead.created_at ? new Date(lead.created_at).toLocaleDateString('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '';
+            
+            tr.innerHTML = `
+                <td>${dDate}</td>
+                <td>${lead.sucursal || ''}</td>
+                <td class="font-medium">${lead.nombre || ''}</td>
+                <td>${lead.vehiculo || ''}</td>
+                <td><span style="font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); background: var(--bg-dark); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">${lead.creado_por || ''}</span></td>
+                <td>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn" style="background: var(--success); padding: 0.25rem 0.5rem; font-size: 0.8rem; color: white; display: flex; align-items: center; gap: 0.25rem;" onclick="updateAsistencia('${lead.id}', 'EN PROCESO')"><i class="fa-solid fa-check"></i> Sí Asistió</button>
+                        <button class="btn btn-outline" style="border-color: var(--danger); color: var(--danger); padding: 0.25rem 0.5rem; font-size: 0.8rem; display: flex; align-items: center; gap: 0.25rem;" onclick="updateAsistencia('${lead.id}', 'NO ASISTIO')"><i class="fa-solid fa-xmark"></i> No Asistió</button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Podio
+        const podiumContainer = document.getElementById('demeritosPodium');
+        if(!podiumContainer) return;
+        
+        const stats = {};
+        filteredData.forEach(lead => {
+            const agente = (lead.creado_por || '').toLowerCase().trim();
+            if(!agente) return;
+            if(!stats[agente]) stats[agente] = { asistidas: 0, noAsistidas: 0, total: 0 };
+            
+            if(['EN PROCESO', 'DISPERSADO', 'DETENIDO'].includes(lead.etapa)) {
+                stats[agente].asistidas++;
+                stats[agente].total++;
+            } else if (lead.etapa === 'NO ASISTIO') {
+                stats[agente].noAsistidas++;
+                stats[agente].total++;
+            }
+        });
+
+        const sortedAgents = Object.keys(stats).sort((a, b) => stats[b].asistidas - stats[a].asistidas).slice(0, 3);
+
+        podiumContainer.innerHTML = '';
+        const colors = ['#f59e0b', '#94a3b8', '#b45309']; // Oro, Plata, Bronce
+        
+        if(sortedAgents.length === 0) {
+            podiumContainer.innerHTML = '<p style="color: var(--text-secondary); width: 100%; text-align: center; padding: 1.5rem;">Aún no hay datos suficientes para el podio de asistencias.</p>';
+        }
+
+        sortedAgents.forEach((agente, index) => {
+            const d = stats[agente];
+            const div = document.createElement('div');
+            div.style.cssText = `flex: 1; min-width: 200px; background: var(--bg-panel); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); display: flex; align-items: center; gap: 1rem; position: relative; overflow: hidden;`;
+            
+            const ribbon = document.createElement('div');
+            ribbon.style.cssText = `position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: ${colors[index] || 'var(--accent-primary)'};`;
+            div.appendChild(ribbon);
+
+            div.innerHTML += `
+                <div style="width: 48px; height: 48px; border-radius: 50%; background: ${colors[index] || 'var(--accent-primary)'}20; color: ${colors[index] || 'var(--accent-primary)'}; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold;">
+                    #${index + 1}
+                </div>
+                <div style="flex: 1;">
+                    <h3 style="color: var(--text-primary); font-size: 1rem; font-weight: 600; text-transform: capitalize; margin-bottom: 0.25rem;">${agente}</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary);">Citas Asistidas: <strong style="color: var(--success)">${d.asistidas}</strong></p>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary);">Faltas / Asistencias fallidas: <strong style="color: var(--danger)">${d.noAsistidas}</strong></p>
+                </div>
+            `;
+            podiumContainer.appendChild(div);
+        });
+
+    } catch (err) {
+        console.error('Error renderAsistenciasSubView:', err);
+    }
+}
+
+// Redefinir updateAsistencia original para refrescar adecuadamente en cascada
+async function updateAsistencia(leadId, nuevaEtapa) {
+    if(!confirm(`¿Estás seguro de marcar esta cita como ${nuevaEtapa === 'EN PROCESO' ? 'SÍ ASISTIÓ' : 'NO ASISTIÓ'}?`)) return;
+    
+    try {
+        const { error } = await supabaseClient
+            .from('leads')
+            .update({ etapa: nuevaEtapa, updated_at: new Date().toISOString() })
+            .eq('id', leadId);
+
+        if (error) throw error;
+        
+        triggerNotification('Evaluación guardada', 'La etapa del lead ha sido actualizada.', 'success');
+        
+        renderAsistenciasSubView();
+        if(typeof fetchLeads === 'function') fetchLeads();
+        
+    } catch(err) {
+        console.error('Error updateAsistencia:', err);
+        triggerNotification('Error', 'No se pudo guardar la evaluación.', 'danger');
+    }
+}
+
+// Interceptar llamadas desde la función global switchView
+// Para inicializar el módulo la primera vez que se accede
+const originalSwitchView = switchView;
+switchView = function(targetId) {
+    if (targetId === 'demeritosComerciales' && !demeritosModuleInitialized) {
+        initDemeritosModule().then(() => {
+            demeritosModuleInitialized = true;
+        });
+    }
+    originalSwitchView(targetId);
+};
+let demeritosModuleInitialized = false;
 
 // ==========================================
 // Read-Only Interceptors
