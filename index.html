@@ -210,6 +210,39 @@
                                 <option value="martin orduña">martin orduña</option>
                             </select>
                         </div>
+                        <!-- Week Filter -->
+                        <div class="flex items-center gap-2" style="background: var(--bg-panel); padding: 0.25rem 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                            <i class="fa-solid fa-calendar-week" style="color: var(--text-secondary); font-size: 0.8rem;"></i>
+                            <select id="leadWeekFilter" onchange="applyGlobalFilter()" 
+                                style="background: transparent; border: none; color: var(--text-primary); font-size: 0.85rem; outline: none; cursor: pointer; padding: 0.25rem;">
+                                <option value="all">Todas las semanas</option>
+                                <option value="W1">Semana 1 (1 - 7)</option>
+                                <option value="W2">Semana 2 (8 - 14)</option>
+                                <option value="W3">Semana 3 (15 - 21)</option>
+                                <option value="W4">Semana 4 (22 - 28)</option>
+                                <option value="W5">Semana 5 (29+)</option>
+                            </select>
+                        </div>
+                        <!-- Branch Filter -->
+                        <div class="flex items-center gap-2" style="background: var(--bg-panel); padding: 0.25rem 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                            <i class="fa-solid fa-location-dot" style="color: var(--text-secondary); font-size: 0.8rem;"></i>
+                            <select id="leadBranchFilter" onchange="applyGlobalFilter()" 
+                                style="background: transparent; border: none; color: var(--text-primary); font-size: 0.85rem; outline: none; cursor: pointer; padding: 0.25rem;">
+                                <option value="all">Todas las Sucursales</option>
+                                <option value="XALAPA 20 NOV">XALAPA 20 NOV</option>
+                                <option value="XALAPA ARAUCARIAS">XALAPA ARAUCARIAS</option>
+                                <option value="VERACRUZ">VERACRUZ</option>
+                                <option value="ZAPOPAN">ZAPOPAN</option>
+                                <option value="MONTERREY CENTRO">MONTERREY CENTRO</option>
+                                <option value="MONTERREY TERRANOVA">MONTERREY TERRANOVA</option>
+                                <option value="MONTERREY MOVIL">MONTERREY MOVIL</option>
+                                <option value="PUEBLA ANZURES">PUEBLA ANZURES</option>
+                                <option value="PUEBLA CHOLULA">PUEBLA CHOLULA</option>
+                                <option value="QUERETARO">QUERETARO</option>
+                                <option value="QUERETARO MOVIL">QUERETARO MOVIL</option>
+                                <option value="GUADALAJARA MOVIL">GUADALAJARA MOVIL</option>
+                            </select>
+                        </div>
                         <button class="btn" onclick="openNewLeadPanel()"><i class="fa-solid fa-plus"></i> Nuevo
                             Lead</button>
                     </div>

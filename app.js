@@ -1343,6 +1343,8 @@ function applyGlobalFilter() {
     // Filter Leads
     const leadsTbody = document.querySelector('#leads .data-table tbody');
     const agentFilter = document.getElementById('agentFilter') ? document.getElementById('agentFilter').value : 'all';
+    const leadWeekFilter = document.getElementById('leadWeekFilter') ? document.getElementById('leadWeekFilter').value : 'all';
+    const leadBranchFilter = document.getElementById('leadBranchFilter') ? document.getElementById('leadBranchFilter').value : 'all';
 
     if (leadsTbody) {
         const rows = leadsTbody.querySelectorAll('tr');
@@ -1350,12 +1352,32 @@ function applyGlobalFilter() {
             const cells = row.querySelectorAll('td');
             if (cells.length > 6) {
                 const dateStr = cells[0].innerText.trim();
+                const branchStr = cells[1].innerText.trim();
                 const agentStr = cells[6].innerText.trim().toLowerCase();
                 
                 const matchesDate = matchesFilter(dateStr);
                 const matchesAgent = (agentFilter === 'all' || agentStr === agentFilter.toLowerCase());
                 
-                row.style.display = (matchesDate && matchesAgent) ? '' : 'none';
+                let matchesWeek = true;
+                if (leadWeekFilter !== 'all') {
+                    const parts = dateStr.split('/');
+                    if (parts.length === 3) {
+                        const day = parseInt(parts[0]);
+                        let w = 'W1';
+                        if (day >= 8 && day <= 14) w = 'W2';
+                        else if (day >= 15 && day <= 21) w = 'W3';
+                        else if (day >= 22 && day <= 28) w = 'W4';
+                        else if (day >= 29) w = 'W5';
+                        
+                        matchesWeek = (w === leadWeekFilter);
+                    } else {
+                        matchesWeek = false;
+                    }
+                }
+                
+                const matchesBranch = (leadBranchFilter === 'all' || branchStr === leadBranchFilter);
+                
+                row.style.display = (matchesDate && matchesAgent && matchesWeek && matchesBranch) ? '' : 'none';
             }
         });
     }
