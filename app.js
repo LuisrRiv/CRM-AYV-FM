@@ -619,6 +619,12 @@ function renderRegistroLeadsTable(manualData, month) {
     const canal = document.getElementById('registroCanal').value;
     const isReadOnly = currentUser === 'invitado';
 
+    // Accumulators for table totals
+    let weekTotalsBrutos = [0, 0, 0, 0, 0];
+    let weekTotalsViables = [0, 0, 0, 0, 0];
+    let grandTotalMonthBrutos = 0;
+    let grandTotalMonthViables = 0;
+
     sucursalesList.forEach(sucursal => {
         const tr = document.createElement('tr');
         
@@ -664,6 +670,10 @@ function renderRegistroLeadsTable(manualData, month) {
             totalMonthBrutos += brutos;
             totalMonthViables += viables;
 
+            // Accumulate for column totals
+            weekTotalsBrutos[w - 1] += brutos;
+            weekTotalsViables[w - 1] += viables;
+
             const bgColor = w % 2 !== 0 ? 'rgba(189, 251, 47, 0.05)' : 'transparent';
 
             html += `
@@ -686,9 +696,38 @@ function renderRegistroLeadsTable(manualData, month) {
             <td style="background: var(--bg-dark); font-weight: 700; text-align: center; color: var(--accent-primary);">${totalMonthViables}</td>
         `;
 
+        grandTotalMonthBrutos += totalMonthBrutos;
+        grandTotalMonthViables += totalMonthViables;
+
         tr.innerHTML = html;
         tbody.appendChild(tr);
     });
+
+    // Render Totals Row
+    const trTotals = document.createElement('tr');
+    trTotals.style.borderTop = '2px solid var(--border-color)';
+    
+    let totalsHtml = `<td class="font-medium" style="background: var(--bg-panel); position: sticky; left: 0; z-index: 5; border-right: 1px solid var(--border-color); font-weight: 700; color: var(--text-primary);">TOTAL</td>`;
+    
+    for (let w = 1; w <= 5; w++) {
+        const bgColor = w % 2 !== 0 ? 'rgba(189, 251, 47, 0.05)' : 'transparent';
+        totalsHtml += `
+            <td style="background: ${bgColor}; padding: 0.5rem; text-align: center; font-weight: 700; color: var(--text-primary); font-size: 0.85rem;">
+                ${weekTotalsBrutos[w - 1]}
+            </td>
+            <td style="background: ${bgColor}; padding: 0.5rem; text-align: center; font-weight: 700; color: var(--success); font-size: 0.85rem;">
+                ${weekTotalsViables[w - 1]}
+            </td>
+        `;
+    }
+    
+    totalsHtml += `
+        <td style="background: var(--bg-dark); font-weight: 800; text-align: center; font-size: 0.9rem; color: var(--text-primary);">${grandTotalMonthBrutos}</td>
+        <td style="background: var(--bg-dark); font-weight: 800; text-align: center; font-size: 0.9rem; color: var(--success);">${grandTotalMonthViables}</td>
+    `;
+    
+    trTotals.innerHTML = totalsHtml;
+    tbody.appendChild(trTotals);
 }
 
 async function saveRegistroLeadData(sucursal, campo, value, periodo) {
