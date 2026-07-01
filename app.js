@@ -2829,8 +2829,9 @@ function updateDemeritosKPIs(data) {
     // Cálculos
     const total = data.length;
     
-    // Mes actual (Junio 2026)
-    const currentMonth = '2026-06';
+    // Mes actual dinámico (ej. "2026-07")
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const mesActual = data.filter(d => d.fecha && d.fecha.startsWith(currentMonth)).length;
     
     // Pendientes / En revisión
@@ -2891,7 +2892,10 @@ function renderDemeritosAlerts(data) {
     const container = document.getElementById('demeritosAlertsContainer');
     if (!container) return;
     
-    const currentMonthStr = '2026-06';
+    const now = new Date();
+    const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const mesesNombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const currentMonthName = mesesNombres[now.getMonth()];
     const alerts = [];
     
     // 1. Sucursal con > 3 deméritos en el mes actual
@@ -2904,7 +2908,7 @@ function renderDemeritosAlerts(data) {
             alerts.push({
                 type: 'critical',
                 icon: 'fa-triangle-exclamation',
-                text: `Alerta Sucursal: <strong>${s}</strong> supera el límite mensual con <strong>${sucursalCounts[s]}</strong> incidencias registradas en Junio.`
+                text: `Alerta Sucursal: <strong>${s}</strong> supera el límite mensual con <strong>${sucursalCounts[s]}</strong> incidencias registradas en ${currentMonthName}.`
             });
         }
     });
@@ -3086,8 +3090,8 @@ function updateDemeritosCharts(data) {
     // --- 3. Gráfico Tendencia Mensual (Líneas) ---
     const ctxTen = document.getElementById('demeritosTendenciaChart');
     if (ctxTen) {
-        const meses = ['2026-04', '2026-05', '2026-06'];
-        const labels = ['Abril 2026', 'Mayo 2026', 'Junio 2026'];
+        const meses = ['2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10', '2026-11', '2026-12'];
+        const labels = ['Abril 2026', 'Mayo 2026', 'Junio 2026', 'Julio 2026', 'Agosto 2026', 'Septiembre 2026', 'Octubre 2026', 'Noviembre 2026', 'Diciembre 2026'];
         const counts = meses.map(m => data.filter(d => d.fecha && d.fecha.startsWith(m)).length);
         
         if (demeritoCharts.tendencia) demeritoCharts.tendencia.destroy();
