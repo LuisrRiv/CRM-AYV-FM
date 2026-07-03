@@ -1816,7 +1816,8 @@ const allowedUsers = [
     { user: 'marcela ramirez', pass: 'Marcela123', initials: 'MR', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
     { user: 'martin orduña', pass: 'Martin123', initials: 'MO', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
     { user: 'invitado', pass: 'invitado123', initials: 'IN', panels: ['dashboard', 'reportes'], readOnly: true },
-    { user: 'daniel molano', pass: 'Daniel123', initials: 'DM', panels: ['dashboard', 'reportes', 'dispersiones', 'demeritosComerciales'] }
+    { user: 'daniel molano', pass: 'Daniel123', initials: 'DM', panels: ['dashboard', 'reportes', 'dispersiones', 'demeritosComerciales'] },
+    { user: 'beto', pass: 'Beto123', initials: 'BE', panels: ['dashboard', 'leads', 'reportes', 'registroLeads', 'demeritos'] }
 ];
 
 function isReadOnlyUser() {
