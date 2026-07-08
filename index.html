@@ -97,7 +97,8 @@
         <header class="header">
             <div class="search-bar">
                 <i class="fa-solid fa-search" style="color: var(--text-secondary)"></i>
-                <input type="text" placeholder="Buscar clientes, tareas, activos... (Cmd+K)">
+                <input type="text" id="globalSearchInput" placeholder="Buscar clientes, tareas, activos... (Cmd+K)" autocomplete="off">
+                <div id="globalSearchResults" class="search-results-dropdown"></div>
             </div>
             <div class="header-actions">
                 <button class="btn btn-outline" onclick="toggleTheme()" id="themeToggleBtn" title="Cambiar Tema"

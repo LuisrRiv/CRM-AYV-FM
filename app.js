@@ -756,6 +756,7 @@ async function fetchLeads() {
         console.error('Error fetching leads:', error);
         return;
     }
+    window.cachedLeads = data;
     const tbody = document.getElementById('leadsTableBody');
     if(!tbody) return;
     tbody.innerHTML = '';
@@ -1046,6 +1047,7 @@ async function fetchTasks() {
         triggerNotification('Error de Carga', error.message, 'warning');
         return;
     }
+    window.cachedTasks = data;
 
     // Clear all columns
     document.querySelectorAll('.kanban-cards').forEach(col => col.innerHTML = '');
@@ -1188,6 +1190,7 @@ async function fetchDispersiones() {
         console.error('Error fetching dispersiones:', error);
         return;
     }
+    window.cachedDispersiones = data;
     const tbody = document.getElementById('dispersionesTableBody');
     if(!tbody) return;
     tbody.innerHTML = '';
@@ -1776,9 +1779,214 @@ function toggleTheme() {
     }
 }
 
+// ==========================================
+// Global Search Logic
+// ==========================================
+function initGlobalSearch() {
+    const searchInput = document.getElementById('globalSearchInput');
+    const resultsDropdown = document.getElementById('globalSearchResults');
+    if (!searchInput || !resultsDropdown) return;
+
+    searchInput.addEventListener('focus', showSearch);
+    searchInput.addEventListener('input', performSearch);
+    
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !resultsDropdown.contains(e.target)) {
+            hideSearch();
+        }
+    });
+
+    function showSearch() {
+        if (searchInput.value.trim().length > 0) {
+            resultsDropdown.style.display = 'block';
+        }
+    }
+
+    function hideSearch() {
+        resultsDropdown.style.display = 'none';
+    }
+
+    function performSearch() {
+        const query = searchInput.value.toLowerCase().trim();
+        if (query.length === 0) {
+            hideSearch();
+            return;
+        }
+
+        resultsDropdown.innerHTML = '';
+        resultsDropdown.style.display = 'block';
+
+        let hasResults = false;
+
+        // 1. Search Clients / Leads
+        if (window.cachedLeads && window.cachedLeads.length > 0) {
+            const matchedLeads = window.cachedLeads.filter(lead => 
+                (lead.nombre || '').toLowerCase().includes(query) ||
+                (lead.vehiculo || '').toLowerCase().includes(query) ||
+                (lead.numero || '').toLowerCase().includes(query) ||
+                (lead.sucursal || '').toLowerCase().includes(query) ||
+                (lead.observaciones || '').toLowerCase().includes(query)
+            ).slice(0, 5);
+
+            if (matchedLeads.length > 0) {
+                hasResults = true;
+                const catHeader = document.createElement('div');
+                catHeader.className = 'search-category';
+                catHeader.innerText = 'Clientes (Leads)';
+                resultsDropdown.appendChild(catHeader);
+
+                matchedLeads.forEach(lead => {
+                    const item = document.createElement('div');
+                    item.className = 'search-item';
+                    item.onclick = () => {
+                        hideSearch();
+                        switchView('leads');
+                        openLeadPanel(
+                            lead.id, 
+                            lead.nombre || '', 
+                            lead.etapa || '', 
+                            lead.sucursal || '', 
+                            lead.vehiculo || '', 
+                            lead.numero || '', 
+                            lead.observaciones || '',
+                            lead.obs_encargado || ''
+                        );
+                    };
+
+                    let badgeClass = 'cita';
+                    if(lead.etapa === 'DISPERSADO') badgeClass = 'dispersado';
+                    if(lead.etapa === 'DETENIDO') badgeClass = 'detenido';
+                    if(lead.etapa === 'NO VIABLE/ RECHAZADO/ SIN INTERES') badgeClass = 'rechazado';
+                    if(lead.etapa === 'EN PROCESO') badgeClass = 'enproceso';
+                    if(lead.etapa === 'NO ASISTIO') badgeClass = 'noasistio';
+
+                    item.innerHTML = `
+                        <div>
+                            <div class="search-item-title">${escapeHTML(lead.nombre)}</div>
+                            <div class="search-item-subtitle">${escapeHTML(lead.vehiculo || 'Sin vehículo')} • ${escapeHTML(lead.sucursal)}</div>
+                        </div>
+                        <span class="search-item-badge badge ${badgeClass}">${escapeHTML(lead.etapa)}</span>
+                    `;
+                    resultsDropdown.appendChild(item);
+                });
+            }
+        }
+
+        // 2. Search Dispersiones
+        if (window.cachedDispersiones && window.cachedDispersiones.length > 0) {
+            const matchedDisp = window.cachedDispersiones.filter(disp => 
+                (disp.cliente || '').toLowerCase().includes(query) ||
+                (disp.sucursal || '').toLowerCase().includes(query) ||
+                (disp.calificador || '').toLowerCase().includes(query) ||
+                (disp.closer || '').toLowerCase().includes(query)
+            ).slice(0, 5);
+
+            if (matchedDisp.length > 0) {
+                hasResults = true;
+                const catHeader = document.createElement('div');
+                catHeader.className = 'search-category';
+                catHeader.innerText = 'Dispersiones';
+                resultsDropdown.appendChild(catHeader);
+
+                matchedDisp.forEach(disp => {
+                    const item = document.createElement('div');
+                    item.className = 'search-item';
+                    item.onclick = () => {
+                        hideSearch();
+                        switchView('dispersiones');
+                        const row = document.querySelector(`#dispersionesTableBody tr[data-id="${disp.id}"]`);
+                        if (row) {
+                            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            row.style.outline = '2px solid var(--accent-primary)';
+                            row.style.outlineOffset = '-2px';
+                            setTimeout(() => {
+                                row.style.outline = '';
+                                row.style.outlineOffset = '';
+                            }, 2500);
+                        }
+                    };
+
+                    item.innerHTML = `
+                        <div>
+                            <div class="search-item-title">${escapeHTML(disp.cliente)}</div>
+                            <div class="search-item-subtitle">Closer: ${escapeHTML(disp.closer || 'Sin asignar')} • ${escapeHTML(disp.sucursal)}</div>
+                        </div>
+                        <span class="search-item-badge text-success font-medium" style="color: var(--success);">$${Number(disp.monto).toLocaleString('en-US')}</span>
+                    `;
+                    resultsDropdown.appendChild(item);
+                });
+            }
+        }
+
+        // 3. Search Tasks
+        if (window.cachedTasks && window.cachedTasks.length > 0) {
+            const matchedTasks = window.cachedTasks.filter(task => 
+                (task.titulo || '').toLowerCase().includes(query) ||
+                (task.descripcion || '').toLowerCase().includes(query) ||
+                (task.asignado_a || '').toLowerCase().includes(query)
+            ).slice(0, 5);
+
+            if (matchedTasks.length > 0) {
+                hasResults = true;
+                const catHeader = document.createElement('div');
+                catHeader.className = 'search-category';
+                catHeader.innerText = 'Tareas';
+                resultsDropdown.appendChild(catHeader);
+
+                matchedTasks.forEach(task => {
+                    const item = document.createElement('div');
+                    item.className = 'search-item';
+                    item.onclick = () => {
+                        hideSearch();
+                        switchView('kanban');
+                        if (typeof openTaskPanel === 'function') {
+                            openTaskPanel(task);
+                        }
+                    };
+
+                    let badgeClass = 'cita';
+                    if (task.columna === 'done') badgeClass = 'dispersado';
+                    if (task.columna === 'progress') badgeClass = 'enproceso';
+
+                    item.innerHTML = `
+                        <div>
+                            <div class="search-item-title">${escapeHTML(task.titulo)}</div>
+                            <div class="search-item-subtitle">Asignado: ${escapeHTML(task.asignado_a || 'Sin asignar')}</div>
+                        </div>
+                        <span class="search-item-badge badge ${badgeClass}">${escapeHTML(task.columna.toUpperCase())}</span>
+                    `;
+                    resultsDropdown.appendChild(item);
+                });
+            }
+        }
+
+        if (!hasResults) {
+            const noRes = document.createElement('div');
+            noRes.className = 'no-results';
+            noRes.innerText = 'No se encontraron resultados';
+            resultsDropdown.appendChild(noRes);
+        }
+    }
+}
+
+function escapeHTML(str) {
+    if (!str) return '';
+    return str.replace(/[&<>'"]/g, 
+        tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag)
+    );
+}
+
 // Check saved theme on load
 document.addEventListener('DOMContentLoaded', async () => {
     checkAuth();
+    initGlobalSearch();
 
     const savedTheme = localStorage.getItem('crm-theme');
     if (savedTheme === 'dark') {
