@@ -213,6 +213,50 @@ const zoneMapping = {
 let manualOverrides = [];
 let currentFullPeriod = '2026-05-W1';
 
+function getCalendarWeeks(yearMonth) {
+    const [year, month] = yearMonth.split('-').map(Number);
+    const weeks = [];
+    
+    // First day of the month
+    const firstDayDate = new Date(year, month - 1, 1);
+    const firstDayOfWeek = firstDayDate.getDay(); // 0 = Sunday, 1 = Monday, ...
+    
+    // Last day of the month
+    const lastDayOfMonth = new Date(year, month, 0).getDate();
+    
+    let currentStart = 1;
+    // Week 1 ends on the first Saturday (day index 6)
+    // Saturday is day: 1 + (6 - firstDayOfWeek)
+    let currentEnd = 1 + (6 - firstDayOfWeek);
+    if (currentEnd > lastDayOfMonth) {
+        currentEnd = lastDayOfMonth;
+    }
+    
+    weeks.push({ start: currentStart, end: currentEnd });
+    
+    // Remaining weeks
+    while (currentEnd < lastDayOfMonth) {
+        currentStart = currentEnd + 1;
+        currentEnd = currentStart + 6;
+        if (currentEnd > lastDayOfMonth) {
+            currentEnd = lastDayOfMonth;
+        }
+        weeks.push({ start: currentStart, end: currentEnd });
+    }
+    
+    return weeks;
+}
+
+function getWeekForDate(yearMonth, day) {
+    const weeks = getCalendarWeeks(yearMonth);
+    for (let i = 0; i < weeks.length; i++) {
+        if (day >= weeks[i].start && day <= weeks[i].end) {
+            return `W${i + 1}`;
+        }
+    }
+    return 'W1';
+}
+
 function getWeekRange(yearMonth, week) {
     const [year, month] = yearMonth.split('-').map(Number);
     const pad = (n) => n.toString().padStart(2, '0');
@@ -224,24 +268,17 @@ function getWeekRange(yearMonth, week) {
         return { start: formatDate(year, month, 1), end: formatDate(year, month, lastDayOfMonth) };
     }
 
-    let startDay, endDay;
-    switch(week) {
-        case 'W1': startDay = 1; endDay = 7; break;
-        case 'W2': startDay = 8; endDay = 14; break;
-        case 'W3': startDay = 15; endDay = 21; break;
-        case 'W4': startDay = 22; endDay = 28; break;
-        case 'W5': startDay = 29; endDay = lastDayOfMonth; break;
-        default: startDay = 1; endDay = 7;
+    const weeks = getCalendarWeeks(yearMonth);
+    const wIndex = parseInt(week.replace('W', '')) - 1;
+    if (wIndex >= 0 && wIndex < weeks.length) {
+        const wRange = weeks[wIndex];
+        return {
+            start: formatDate(year, month, wRange.start),
+            end: formatDate(year, month, wRange.end)
+        };
     }
 
-    if (startDay > lastDayOfMonth) {
-        return { start: '1970-01-01', end: '1970-01-01' }; 
-    }
-
-    return {
-        start: formatDate(year, month, startDay),
-        end: formatDate(year, month, endDay)
-    };
+    return { start: '1970-01-01', end: '1970-01-01' };
 }
 
 async function updateReportView() {
@@ -281,25 +318,83 @@ function updateWeekLabels(yearMonth) {
         return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
     };
     
-    for (let i = 1; i <= 5; i++) {
+    const weeks = getCalendarWeeks(yearMonth);
+    const numWeeks = weeks.length;
+    
+    for (let i = 1; i <= 6; i++) {
         const option = select.querySelector(`option[value="W${i}"]`);
         if (option) {
             const range = getWeekRange(yearMonth, `W${i}`);
             if (range.start === '1970-01-01') {
                 option.textContent = `Semana ${i} (No aplica)`;
                 option.disabled = true;
-                if (currentVal === `W${i}`) select.value = 'W4';
+                option.style.display = 'none';
             } else {
                 option.textContent = `Semana ${i} (${formatLabel(range.start)} - ${formatLabel(range.end)})`;
                 option.disabled = false;
+                option.style.display = '';
             }
         }
     }
     
-    if (select.value === 'W5' && select.querySelector('option[value="W5"]').disabled) {
-        select.value = 'W4';
-    } else {
-        select.value = currentVal;
+    // Handle fallback value if selected one is disabled/hidden
+    if (currentVal.startsWith('W')) {
+        const valNum = parseInt(currentVal.replace('W', ''));
+        if (valNum > numWeeks) {
+            select.value = `W${numWeeks}`;
+        } else {
+            select.value = currentVal;
+        }
+    }
+}
+
+function updateWeekDropdown(selectId, yearMonth, includeAllOption = false) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    
+    const currentVal = select.value;
+    const weeks = yearMonth && yearMonth !== 'all' ? getCalendarWeeks(yearMonth) : [];
+    const numWeeks = yearMonth && yearMonth !== 'all' ? weeks.length : 6;
+    
+    const pad = (n) => n.toString().padStart(2, '0');
+    const formatDate = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
+    const formatLabel = (dateStr) => {
+        const d = new Date(dateStr + 'T12:00:00');
+        return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+    };
+    
+    for (let i = 1; i <= 6; i++) {
+        const option = select.querySelector(`option[value="W${i}"]`);
+        if (option) {
+            if (yearMonth && yearMonth !== 'all') {
+                if (i <= numWeeks) {
+                    const [year, month] = yearMonth.split('-').map(Number);
+                    const wRange = weeks[i - 1];
+                    const startStr = formatDate(year, month, wRange.start);
+                    const endStr = formatDate(year, month, wRange.end);
+                    option.textContent = `Semana ${i} (${formatLabel(startStr)} - ${formatLabel(endStr)})`;
+                    option.disabled = false;
+                    option.style.display = '';
+                } else {
+                    option.textContent = `Semana ${i} (No aplica)`;
+                    option.disabled = true;
+                    option.style.display = 'none';
+                }
+            } else {
+                option.textContent = `Semana ${i}`;
+                option.disabled = false;
+                option.style.display = '';
+            }
+        }
+    }
+    
+    if (currentVal.startsWith('W')) {
+        const valNum = parseInt(currentVal.replace('W', ''));
+        if (valNum > numWeeks) {
+            select.value = includeAllOption ? 'all' : 'W1';
+        } else {
+            select.value = currentVal;
+        }
     }
 }
 
@@ -342,8 +437,10 @@ async function generateReport() {
         reportData[zone] = { leads: 0, viables: 0, citas: 0, dispersado: 0, disp_count: 0, presupuesto: 0, atendidas: 0 };
         
         if (week === 'MONTH') {
-            // AGGREGATE MONTHLY: Sum of W1 to W5
-            ['W1', 'W2', 'W3', 'W4', 'W5'].forEach(w => {
+            // AGGREGATE MONTHLY: Sum of all calendar weeks
+            const weeks = getCalendarWeeks(month);
+            const weekList = weeks.map((_, idx) => `W${idx + 1}`);
+            weekList.forEach(w => {
                 const p = `${month}-${w}`;
                 const wRange = getWeekRange(month, w);
                 
@@ -615,13 +712,40 @@ function renderRegistroLeadsTable(manualData, month) {
     if (!tbody) return;
     tbody.innerHTML = '';
 
+    const weeks = getCalendarWeeks(month);
+    const numWeeks = weeks.length;
+
+    // Render Table Header dynamically
+    const thead = document.querySelector('#registroLeadsTable thead');
+    if (thead) {
+        let r1 = `<tr><th rowspan="2" style="border-bottom: 2px solid var(--border-color); min-width: 180px;">Sucursal</th>`;
+        let r2 = `<tr>`;
+        
+        for (let w = 1; w <= numWeeks; w++) {
+            const bgColor = w % 2 !== 0 ? 'rgba(189, 251, 47, 0.05)' : 'transparent';
+            r1 += `<th colspan="2" style="text-align: center; border-bottom: 2px solid var(--border-color); background: ${bgColor};">Semana ${w}</th>`;
+            r2 += `
+                <th style="font-size: 0.65rem; text-align: center; background: ${bgColor};">Totales</th>
+                <th style="font-size: 0.65rem; text-align: center; background: ${bgColor}; color: var(--accent-primary);">Viables</th>
+            `;
+        }
+        
+        r1 += `<th colspan="2" style="text-align: center; border-bottom: 2px solid var(--border-color); background: var(--bg-dark);">Total Mes</th></tr>`;
+        r2 += `
+            <th style="font-size: 0.65rem; text-align: center; background: var(--bg-dark);">Totales</th>
+            <th style="font-size: 0.65rem; text-align: center; background: var(--bg-dark); color: var(--accent-primary);">Viables</th>
+        </tr>`;
+        
+        thead.innerHTML = r1 + r2;
+    }
+
     const currentUser = localStorage.getItem('crm-logged-in');
     const canal = document.getElementById('registroCanal').value;
     const isReadOnly = currentUser === 'invitado';
 
     // Accumulators for table totals
-    let weekTotalsBrutos = [0, 0, 0, 0, 0];
-    let weekTotalsViables = [0, 0, 0, 0, 0];
+    let weekTotalsBrutos = Array(numWeeks).fill(0);
+    let weekTotalsViables = Array(numWeeks).fill(0);
     let grandTotalMonthBrutos = 0;
     let grandTotalMonthViables = 0;
 
@@ -634,8 +758,8 @@ function renderRegistroLeadsTable(manualData, month) {
         let totalMonthBrutos = 0;
         let totalMonthViables = 0;
 
-        // Weeks 1 to 5
-        for (let w = 1; w <= 5; w++) {
+        // Weeks 1 to N
+        for (let w = 1; w <= numWeeks; w++) {
             const periodo = `${month}-W${w}`;
             
             let brutos = 0, viables = 0;
@@ -709,7 +833,7 @@ function renderRegistroLeadsTable(manualData, month) {
     
     let totalsHtml = `<td class="font-medium" style="background: var(--bg-panel); position: sticky; left: 0; z-index: 5; border-right: 1px solid var(--border-color); font-weight: 700; color: var(--text-primary);">TOTAL</td>`;
     
-    for (let w = 1; w <= 5; w++) {
+    for (let w = 1; w <= numWeeks; w++) {
         const bgColor = w % 2 !== 0 ? 'rgba(189, 251, 47, 0.05)' : 'transparent';
         totalsHtml += `
             <td style="background: ${bgColor}; padding: 0.5rem; text-align: center; font-weight: 700; color: var(--text-primary); font-size: 0.85rem;">
@@ -1296,6 +1420,10 @@ async function deleteRow(btn, type, id) {
 function applyGlobalFilter() {
     const filter = document.getElementById('globalMonthFilter').value;
     
+    // Update week filters dropdown options
+    updateWeekDropdown('leadWeekFilter', filter, true);
+    updateWeekDropdown('dispersionWeekFilter', filter, true);
+    
     // Helper to check if a date string (DD/MM/YYYY or D/M/YYYY) matches the filter (YYYY-MM)
     const matchesFilter = (dateStr) => {
         if (filter === 'all') return true;
@@ -1325,11 +1453,10 @@ function applyGlobalFilter() {
                     const parts = dateStr.split('/');
                     if (parts.length === 3) {
                         const day = parseInt(parts[0]);
-                        let w = 'W1';
-                        if (day >= 8 && day <= 14) w = 'W2';
-                        else if (day >= 15 && day <= 21) w = 'W3';
-                        else if (day >= 22 && day <= 28) w = 'W4';
-                        else if (day >= 29) w = 'W5';
+                        const month = parseInt(parts[1]);
+                        const year = parseInt(parts[2]);
+                        const rowYearMonth = `${year}-${month.toString().padStart(2, '0')}`;
+                        const w = getWeekForDate(rowYearMonth, day);
                         
                         matchesWeek = (w === weekFilter);
                     } else {
@@ -1366,11 +1493,10 @@ function applyGlobalFilter() {
                     const parts = dateStr.split('/');
                     if (parts.length === 3) {
                         const day = parseInt(parts[0]);
-                        let w = 'W1';
-                        if (day >= 8 && day <= 14) w = 'W2';
-                        else if (day >= 15 && day <= 21) w = 'W3';
-                        else if (day >= 22 && day <= 28) w = 'W4';
-                        else if (day >= 29) w = 'W5';
+                        const month = parseInt(parts[1]);
+                        const year = parseInt(parts[2]);
+                        const rowYearMonth = `${year}-${month.toString().padStart(2, '0')}`;
+                        const w = getWeekForDate(rowYearMonth, day);
                         
                         matchesWeek = (w === leadWeekFilter);
                     } else {
