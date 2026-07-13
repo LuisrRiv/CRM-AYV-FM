@@ -916,7 +916,8 @@ async function fetchLeads() {
             lead.vehiculo || '', 
             lead.numero || '', 
             lead.observaciones || '',
-            lead.obs_encargado || ''
+            lead.obs_encargado || '',
+            lead.fecha_cita || ''
         );
         
         tr.innerHTML = `
@@ -964,12 +965,13 @@ function openNewLeadPanel() {
     document.getElementById('panelLeadNumero').value = "";
     document.getElementById('panelLeadObs').value = "";
     document.getElementById('panelLeadObsEncargado').value = "";
+    document.getElementById('panelLeadFechaCita').value = "";
     const btnDel = document.getElementById('btnDeleteLead');
     if(btnDel) btnDel.style.display = 'none';
     document.getElementById('leadPanel').classList.add('open');
 }
 
-function openLeadPanel(id, name, stage, sucursal, vehiculo, numero, obs, obsEncargado) {
+function openLeadPanel(id, name, stage, sucursal, vehiculo, numero, obs, obsEncargado, fechaCita) {
     currentLeadId = id;
     document.getElementById('panelTitle').innerText = "Detalles del Lead";
     document.getElementById('panelLeadNameInput').value = name;
@@ -979,6 +981,7 @@ function openLeadPanel(id, name, stage, sucursal, vehiculo, numero, obs, obsEnca
     document.getElementById('panelLeadNumero').value = numero;
     document.getElementById('panelLeadObs').value = obs;
     document.getElementById('panelLeadObsEncargado').value = obsEncargado || "";
+    document.getElementById('panelLeadFechaCita').value = fechaCita || "";
     const btnDel = document.getElementById('btnDeleteLead');
     if(btnDel) btnDel.style.display = 'block';
     document.getElementById('leadPanel').classList.add('open');
@@ -995,6 +998,7 @@ async function saveLead() {
     const vehiculo = document.getElementById('panelLeadVehiculo').value;
     const numero = document.getElementById('panelLeadNumero').value;
     const obs = document.getElementById('panelLeadObs').value;
+    const fechaCita = document.getElementById('panelLeadFechaCita').value;
 
     if(!name) {
         triggerNotification('Error', 'El nombre del lead es obligatorio', 'warning');
@@ -1011,7 +1015,8 @@ async function saveLead() {
         numero: numero,
         observaciones: obs,
         obs_encargado: document.getElementById('panelLeadObsEncargado').value,
-        creado_por: currentUser
+        creado_por: currentUser,
+        fecha_cita: fechaCita || null
     };
 
     if (currentLeadId) {
@@ -1976,7 +1981,8 @@ function initGlobalSearch() {
                             lead.vehiculo || '', 
                             lead.numero || '', 
                             lead.observaciones || '',
-                            lead.obs_encargado || ''
+                            lead.obs_encargado || '',
+                            lead.fecha_cita || ''
                         );
                     };
 
@@ -2190,6 +2196,8 @@ function switchView(targetId) {
             if (typeof renderDemeritosComercialesView === 'function') renderDemeritosComercialesView();
         } else if (targetId === 'llamadas') {
             if (typeof fetchLlamadas === 'function') fetchLlamadas();
+        } else if (targetId === 'agendaManana') {
+            if (typeof renderAgendaManana === 'function') renderAgendaManana();
         }
     }, 50);
 }
@@ -4337,6 +4345,172 @@ switchView = function(targetId) {
     originalSwitchView(targetId);
 };
 let demeritosModuleInitialized = false;
+
+// ==========================================
+// Módulo de Agenda de Mañana
+// ==========================================
+async function renderAgendaManana() {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    
+    // Formato YYYY-MM-DD
+    const yyyy = tomorrow.getFullYear();
+    const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const dd = String(tomorrow.getDate()).padStart(2, '0');
+    const tomorrowStr = `${yyyy}-${mm}-${dd}`;
+    
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const dateFormatted = tomorrow.toLocaleDateString('es-MX', options);
+    
+    const dateTextEl = document.getElementById('agendaMananaFechaText');
+    if (dateTextEl) {
+        dateTextEl.innerText = dateFormatted.charAt(0).toUpperCase() + dateFormatted.slice(1);
+    }
+    
+    if (!window.cachedLeads) {
+        await fetchLeads();
+    }
+    
+    const leads = window.cachedLeads || [];
+    
+    const tomorrowAppointments = leads.filter(lead => {
+        if (lead.etapa !== 'CITA') return false;
+        if (!lead.fecha_cita) return false;
+        return lead.fecha_cita.trim() === tomorrowStr;
+    });
+    
+    const totalCitas = tomorrowAppointments.length;
+    
+    const sucursales = new Set();
+    const agentes = new Set();
+    tomorrowAppointments.forEach(lead => {
+        if (lead.sucursal) sucursales.add(lead.sucursal);
+        if (lead.creado_por) agentes.add(lead.creado_por);
+    });
+    
+    const totalEl = document.getElementById('agendaMananaTotalMetric');
+    if (totalEl) totalEl.innerText = totalCitas;
+    
+    const sucursalesEl = document.getElementById('agendaMananaSucursalesMetric');
+    if (sucursalesEl) sucursalesEl.innerText = sucursales.size;
+    
+    const agentesEl = document.getElementById('agendaMananaAgentesMetric');
+    if (agentesEl) agentesEl.innerText = agentes.size;
+    
+    const tbody = document.getElementById('agendaMananaTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    if (tomorrowAppointments.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 2rem;">No hay citas programadas para el día de mañana.</td>`;
+        tbody.appendChild(tr);
+        return;
+    }
+    
+    tomorrowAppointments.forEach(lead => {
+        const tr = document.createElement('tr');
+        tr.dataset.id = lead.id;
+        tr.onclick = () => openLeadPanel(
+            lead.id, 
+            lead.nombre || '', 
+            lead.etapa || '', 
+            lead.sucursal || '', 
+            lead.vehiculo || '', 
+            lead.numero || '', 
+            lead.observaciones || '',
+            lead.obs_encargado || '',
+            lead.fecha_cita || ''
+        );
+        
+        tr.innerHTML = `
+            <td class="font-medium">${escapeHTML(lead.sucursal || '')}</td>
+            <td>${escapeHTML(lead.nombre || '')}</td>
+            <td>${escapeHTML(lead.vehiculo || '')}</td>
+            <td>${escapeHTML(lead.numero || '')}</td>
+            <td><span style="font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); background: var(--bg-dark); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">${escapeHTML(lead.creado_por || '-')}</span></td>
+            <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(lead.observaciones || '')}</td>
+            <td style="color: #6366f1; font-weight: 500; font-style: italic;">${escapeHTML(lead.obs_encargado || '')}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+async function exportAgendaMananaToExcel() {
+    const btn = document.getElementById('btnExportAgenda');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generando...';
+    }
+
+    try {
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+        
+        const yyyy = tomorrow.getFullYear();
+        const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+        const dd = String(tomorrow.getDate()).padStart(2, '0');
+        const tomorrowStr = `${yyyy}-${mm}-${dd}`;
+
+        if (!window.cachedLeads) {
+            await fetchLeads();
+        }
+        
+        const leads = window.cachedLeads || [];
+        const tomorrowAppointments = leads.filter(lead => 
+            lead.etapa === 'CITA' && lead.fecha_cita && lead.fecha_cita.trim() === tomorrowStr
+        );
+
+        if (tomorrowAppointments.length === 0) {
+            triggerNotification('Aviso', 'No hay citas para mañana para exportar.', 'warning');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-file-excel"></i> Exportar Excel';
+            }
+            return;
+        }
+
+        const rows = tomorrowAppointments.map(lead => ({
+            'SUCURSAL': lead.sucursal || '',
+            'CLIENTE': lead.nombre || '',
+            'VEHÍCULO': lead.vehiculo || '',
+            'NÚMERO/TELÉFONO': lead.numero || '',
+            'AGENTE': lead.creado_por || '',
+            'OBSERVACIONES': lead.observaciones || '',
+            'OBSERVACIONES ENCARGADO': lead.obs_encargado || ''
+        }));
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(rows);
+
+        ws['!cols'] = [
+            { wch: 22 },  // SUCURSAL
+            { wch: 25 },  // CLIENTE
+            { wch: 20 },  // VEHÍCULO
+            { wch: 15 },  // NÚMERO/TELÉFONO
+            { wch: 18 },  // AGENTE
+            { wch: 35 },  // OBSERVACIONES
+            { wch: 35 }   // OBSERVACIONES ENCARGADO
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, 'Agenda');
+
+        const fileName = `Agenda_Mañana_${tomorrowStr}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+
+        triggerNotification('Éxito', 'Agenda exportada correctamente', 'success');
+    } catch (err) {
+        console.error('Error exportando agenda:', err);
+        triggerNotification('Error', 'No se pudo exportar la agenda', 'warning');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-file-excel"></i> Exportar Excel';
+        }
+    }
+}
 
 // ==========================================
 // Read-Only Interceptors

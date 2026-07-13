@@ -61,6 +61,9 @@
             <a class="nav-item" data-target="leads">
                 <i class="fa-solid fa-users"></i> Reporte de Citas
             </a>
+            <a class="nav-item" data-target="agendaManana">
+                <i class="fa-solid fa-calendar-day"></i> Agenda de Mañana
+            </a>
             <a class="nav-item" data-target="kanban">
                 <i class="fa-solid fa-list-check"></i> Tareas Pendientes
             </a>
@@ -274,6 +277,65 @@
                     </thead>
                     <tbody id="leadsTableBody">
                         <!-- Llenado dinámicamente desde Supabase -->
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Agenda de Mañana View -->
+            <section id="agendaManana" class="view-section">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h1 class="text-2xl">Agenda de Mañana</h1>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                            Citas programadas para el: <strong id="agendaMananaFechaText" style="color: var(--accent-primary)">-</strong>
+                        </p>
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        <button class="btn btn-outline" id="btnExportAgenda" onclick="exportAgendaMananaToExcel()" title="Descargar Agenda de Mañana como Excel"
+                            style="display: flex; align-items: center; gap: 0.5rem; border-color: #1d6f42; color: #1d6f42; font-size: 0.85rem; padding: 0.5rem 1rem; transition: all 0.2s;"
+                            onmouseover="this.style.background='#1d6f42'; this.style.color='white';"
+                            onmouseout="this.style.background='transparent'; this.style.color='#1d6f42';">
+                            <i class="fa-solid fa-file-excel"></i> Exportar Excel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Resumen de Citas de Mañana -->
+                <div class="flex gap-4 mb-4">
+                    <div style="flex: 1; background: var(--bg-panel); padding: 1.25rem; border-radius: 0.75rem; border: 1px solid var(--border-color);">
+                        <h3 style="color: var(--text-secondary); font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fa-solid fa-calendar-check" style="color: var(--accent-primary)"></i> Total Citas Programadas
+                        </h3>
+                        <p style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem;" id="agendaMananaTotalMetric">0</p>
+                    </div>
+                    <div style="flex: 1; background: var(--bg-panel); padding: 1.25rem; border-radius: 0.75rem; border: 1px solid var(--border-color);">
+                        <h3 style="color: var(--text-secondary); font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fa-solid fa-building" style="color: var(--success)"></i> Sucursales con Citas
+                        </h3>
+                        <p style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem; color: var(--success);" id="agendaMananaSucursalesMetric">0</p>
+                    </div>
+                    <div style="flex: 1; background: var(--bg-panel); padding: 1.25rem; border-radius: 0.75rem; border: 1px solid var(--border-color);">
+                        <h3 style="color: var(--text-secondary); font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fa-solid fa-user-tie" style="color: var(--warning)"></i> Agentes Asignados
+                        </h3>
+                        <p style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem; color: var(--warning);" id="agendaMananaAgentesMetric">0</p>
+                    </div>
+                </div>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Sucursal</th>
+                            <th>Nombre del Cliente</th>
+                            <th>Vehículo de Interés</th>
+                            <th>Teléfono</th>
+                            <th>Agente Responsable</th>
+                            <th>Observaciones</th>
+                            <th>Obs. Encargado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="agendaMananaTableBody">
+                        <!-- Se llena dinámicamente -->
                     </tbody>
                 </table>
             </section>
@@ -970,6 +1032,10 @@
                 </select>
                 <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;"><i
                         class="fa-brands fa-slack"></i> Un cambio de estado notificará vía Slack.</p>
+            </div>
+            <div class="form-group" id="groupLeadFechaCita">
+                <label>Fecha de la Cita</label>
+                <input type="date" class="form-control" id="panelLeadFechaCita">
             </div>
 
             <div class="form-group">
