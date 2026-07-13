@@ -2149,16 +2149,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Authentication Logic
 // ==========================================
 const allowedUsers = [
-    { user: 'adminlr', pass: 'AdminLR123', initials: 'AD', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
-    { user: 'franco lozada', pass: 'Franco123', initials: 'FL', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
-    { user: 'fabiola mendoza', pass: 'Fabiola123', initials: 'FM', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas'], readOnly: true },
-    { user: 'fatima morales', pass: 'Fatima123', initials: 'FT', panels: ['kanban', 'leads', 'assets', 'chat'], readOnly: true },
-    { user: 'marcela ramirez', pass: 'Marcela123', initials: 'MR', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
-    { user: 'martin orduña', pass: 'Martin123', initials: 'MO', panels: ['dashboard', 'leads', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
+    { user: 'adminlr', pass: 'AdminLR123', initials: 'AD', panels: ['dashboard', 'leads', 'agendaManana', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
+    { user: 'franco lozada', pass: 'Franco123', initials: 'FL', panels: ['dashboard', 'leads', 'agendaManana', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
+    { user: 'fabiola mendoza', pass: 'Fabiola123', initials: 'FM', panels: ['dashboard', 'leads', 'agendaManana', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas'], readOnly: true },
+    { user: 'fatima morales', pass: 'Fatima123', initials: 'FT', panels: ['kanban', 'leads', 'agendaManana', 'assets', 'chat'], readOnly: true },
+    { user: 'marcela ramirez', pass: 'Marcela123', initials: 'MR', panels: ['dashboard', 'leads', 'agendaManana', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
+    { user: 'martin orduña', pass: 'Martin123', initials: 'MO', panels: ['dashboard', 'leads', 'agendaManana', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
     { user: 'invitado', pass: 'invitado123', initials: 'IN', panels: ['dashboard', 'reportes'], readOnly: true },
     { user: 'daniel molano', pass: 'Daniel123', initials: 'DM', panels: ['dashboard', 'reportes', 'dispersiones', 'demeritosComerciales'] },
-    { user: 'beto', pass: 'Beto123', initials: 'BE', panels: ['dashboard', 'leads', 'reportes', 'registroLeads', 'demeritos'] },
-    { user: 'maggie', pass: 'Maggie123', initials: 'MA', panels: ['dashboard', 'leads', 'reportes', 'registroLeads', 'demeritos', 'dispersiones'] }
+    { user: 'beto', pass: 'Beto123', initials: 'BE', panels: ['dashboard', 'leads', 'agendaManana', 'reportes', 'registroLeads', 'demeritos'] },
+    { user: 'maggie', pass: 'Maggie123', initials: 'MA', panels: ['dashboard', 'leads', 'agendaManana', 'reportes', 'registroLeads', 'demeritos', 'dispersiones'] }
 ];
 
 function isReadOnlyUser() {
