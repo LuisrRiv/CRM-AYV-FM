@@ -64,6 +64,9 @@
             <a class="nav-item" data-target="agendaManana">
                 <i class="fa-solid fa-calendar-day"></i> Agenda de Mañana
             </a>
+            <a class="nav-item" data-target="calendario">
+                <i class="fa-solid fa-calendar-days"></i> Calendario de Citas
+            </a>
             <a class="nav-item" data-target="kanban">
                 <i class="fa-solid fa-list-check"></i> Tareas Pendientes
             </a>
@@ -338,6 +341,34 @@
                         <!-- Se llena dinámicamente -->
                     </tbody>
                 </table>
+            </section>
+
+            <!-- Calendar View -->
+            <section id="calendario" class="view-section">
+                <div class="flex justify-between items-center mb-4">
+                    <h1 class="text-2xl">Calendario de Citas</h1>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <label for="calendarBranchFilter" style="font-size: 0.875rem; color: var(--text-secondary); white-space: nowrap;">Filtrar Sucursal:</label>
+                        <select id="calendarBranchFilter" class="form-control" style="width: 200px; padding: 0.25rem 0.5rem;" onchange="filterCalendarByBranch()">
+                            <option value="all">Todas las sucursales</option>
+                            <option value="XALAPA 20 NOV">XALAPA 20 NOV</option>
+                            <option value="XALAPA ARAUCARIAS">XALAPA ARAUCARIAS</option>
+                            <option value="VERACRUZ">VERACRUZ</option>
+                            <option value="ZAPOPAN">ZAPOPAN</option>
+                            <option value="MONTERREY CENTRO">MONTERREY CENTRO</option>
+                            <option value="MONTERREY TERRANOVA">MONTERREY TERRANOVA</option>
+                            <option value="MONTERREY MOVIL">MONTERREY MOVIL</option>
+                            <option value="QUERETARO">QUERETARO</option>
+                            <option value="QUERETARO MOVIL">QUERETARO MOVIL</option>
+                            <option value="GUADALAJARA MOVIL">GUADALAJARA MOVIL</option>
+                            <option value="PUEBLA ANZURES">PUEBLA ANZURES</option>
+                            <option value="PUEBLA CHOLULA">PUEBLA CHOLULA</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="background: var(--bg-panel); padding: 1.5rem; border-radius: 1rem; border: 1px solid var(--border-color); min-height: 600px;">
+                    <div id="calendar"></div>
+                </div>
             </section>
 
             <!-- Kanban View -->
@@ -1035,7 +1066,7 @@
             </div>
             <div class="form-group" id="groupLeadFechaCita">
                 <label>Fecha de la Cita</label>
-                <input type="date" class="form-control" id="panelLeadFechaCita">
+                <input type="datetime-local" class="form-control" id="panelLeadFechaCita">
             </div>
 
             <div class="form-group">
@@ -1413,6 +1444,9 @@
         <h3 id="mediaViewerTitle" style="color: white; margin-top: 1rem; font-weight: 500; font-size: 1.25rem;"></h3>
     </div>
 
+    <!-- FullCalendar CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/locales/es.global.min.js"></script>
     <script src="app.js?v=8"></script>
 </body>
 

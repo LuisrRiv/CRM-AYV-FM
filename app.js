@@ -1020,7 +1020,36 @@ function openLeadPanel(id, name, stage, sucursal, vehiculo, numero, obs, obsEnca
     document.getElementById('panelLeadNumero').value = numero;
     document.getElementById('panelLeadObs').value = obs;
     document.getElementById('panelLeadObsEncargado').value = obsEncargado || "";
-    document.getElementById('panelLeadFechaCita').value = fechaCita || "";
+
+    // Formatear fecha para input datetime-local (requiere YYYY-MM-DDTHH:mm)
+    let formattedFecha = "";
+    if (fechaCita) {
+        const clean = fechaCita.trim();
+        if (clean.length === 10) {
+            formattedFecha = `${clean}T09:00`;
+        } else if (clean.includes('T')) {
+            formattedFecha = clean.substring(0, 16);
+        } else {
+            const spaceIdx = clean.indexOf(' ');
+            if (spaceIdx !== -1) {
+                formattedFecha = clean.substring(0, spaceIdx) + 'T' + clean.substring(spaceIdx + 1, spaceIdx + 6);
+            } else {
+                try {
+                    const d = new Date(clean);
+                    if (!isNaN(d.getTime())) {
+                        const yyyy = d.getFullYear();
+                        const mm = String(d.getMonth() + 1).padStart(2, '0');
+                        const dd = String(d.getDate()).padStart(2, '0');
+                        const hh = String(d.getHours()).padStart(2, '0');
+                        const min = String(d.getMinutes()).padStart(2, '0');
+                        formattedFecha = `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+                    }
+                } catch(e) {}
+            }
+        }
+    }
+    document.getElementById('panelLeadFechaCita').value = formattedFecha;
+
     const btnDel = document.getElementById('btnDeleteLead');
     if(btnDel) btnDel.style.display = 'block';
     document.getElementById('leadPanel').classList.add('open');
@@ -2188,16 +2217,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Authentication Logic
 // ==========================================
 const allowedUsers = [
-    { user: 'adminlr', pass: 'AdminLR123', initials: 'AD', panels: ['dashboard', 'leads', 'agendaManana', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
-    { user: 'franco lozada', pass: 'Franco123', initials: 'FL', panels: ['dashboard', 'leads', 'agendaManana', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
-    { user: 'fabiola mendoza', pass: 'Fabiola123', initials: 'FM', panels: ['dashboard', 'leads', 'agendaManana', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas'], readOnly: true },
-    { user: 'fatima morales', pass: 'Fatima123', initials: 'FT', panels: ['kanban', 'leads', 'agendaManana', 'assets', 'chat'], readOnly: true },
-    { user: 'marcela ramirez', pass: 'Marcela123', initials: 'MR', panels: ['dashboard', 'leads', 'agendaManana', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
-    { user: 'martin orduña', pass: 'Martin123', initials: 'MO', panels: ['dashboard', 'leads', 'agendaManana', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
-    { user: 'invitado', pass: 'invitado123', initials: 'IN', panels: ['dashboard', 'reportes'], readOnly: true },
-    { user: 'daniel molano', pass: 'Daniel123', initials: 'DM', panels: ['dashboard', 'reportes', 'dispersiones', 'demeritosComerciales'] },
-    { user: 'beto', pass: 'Beto123', initials: 'BE', panels: ['dashboard', 'leads', 'agendaManana', 'reportes', 'registroLeads', 'demeritos'] },
-    { user: 'maggie', pass: 'Maggie123', initials: 'MA', panels: ['dashboard', 'leads', 'agendaManana', 'reportes', 'registroLeads', 'demeritos', 'dispersiones'] }
+    { user: 'adminlr', pass: 'AdminLR123', initials: 'AD', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
+    { user: 'franco lozada', pass: 'Franco123', initials: 'FL', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
+    { user: 'fabiola mendoza', pass: 'Fabiola123', initials: 'FM', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas'], readOnly: true },
+    { user: 'fatima morales', pass: 'Fatima123', initials: 'FT', panels: ['kanban', 'leads', 'agendaManana', 'calendario', 'assets', 'chat'], readOnly: true },
+    { user: 'marcela ramirez', pass: 'Marcela123', initials: 'MR', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
+    { user: 'martin orduña', pass: 'Martin123', initials: 'MO', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
+    { user: 'invitado', pass: 'invitado123', initials: 'IN', panels: ['dashboard', 'calendario', 'reportes'], readOnly: true },
+    { user: 'daniel molano', pass: 'Daniel123', initials: 'DM', panels: ['dashboard', 'calendario', 'reportes', 'dispersiones', 'demeritosComerciales'] },
+    { user: 'beto', pass: 'Beto123', initials: 'BE', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'reportes', 'registroLeads', 'demeritos'] },
+    { user: 'maggie', pass: 'Maggie123', initials: 'MA', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'reportes', 'registroLeads', 'demeritos', 'dispersiones'] }
 ];
 
 function isReadOnlyUser() {
@@ -2237,6 +2266,8 @@ function switchView(targetId) {
             if (typeof fetchLlamadas === 'function') fetchLlamadas();
         } else if (targetId === 'agendaManana') {
             if (typeof renderAgendaManana === 'function') renderAgendaManana();
+        } else if (targetId === 'calendario') {
+            if (typeof renderCalendar === 'function') renderCalendar();
         }
     }, 50);
 }
@@ -4416,7 +4447,7 @@ async function renderAgendaManana() {
     const tomorrowAppointments = leads.filter(lead => {
         if (lead.etapa !== 'CITA') return false;
         if (!lead.fecha_cita) return false;
-        return lead.fecha_cita.trim() === tomorrowStr;
+        return lead.fecha_cita.trim().substring(0, 10) === tomorrowStr;
     });
     
     const totalCitas = tomorrowAppointments.length;
@@ -4499,7 +4530,7 @@ async function exportAgendaMananaToExcel() {
         
         const leads = window.cachedLeads || [];
         const tomorrowAppointments = leads.filter(lead => 
-            lead.etapa === 'CITA' && lead.fecha_cita && lead.fecha_cita.trim() === tomorrowStr
+            lead.etapa === 'CITA' && lead.fecha_cita && lead.fecha_cita.trim().substring(0, 10) === tomorrowStr
         );
 
         if (tomorrowAppointments.length === 0) {
@@ -4573,3 +4604,185 @@ document.addEventListener('dragstart', function(e) {
         triggerNotification('Acceso Denegado', 'Solo tienes permisos de visualización.', 'warning');
     }
 }, true);
+
+// ==========================================
+// 📅 Módulo de Calendario de Citas (Option A)
+// ==========================================
+let calendarInstance = null;
+
+// Mapeo de colores para las sucursales
+const sucursalColors = {
+    'QUERETARO': { bg: '#3b82f6', text: '#ffffff' },
+    'QUERETARO MOVIL': { bg: '#2563eb', text: '#ffffff' },
+    'ZAPOPAN': { bg: '#10b981', text: '#ffffff' },
+    'GUADALAJARA MOVIL': { bg: '#059669', text: '#ffffff' },
+    'PUEBLA ANZURES': { bg: '#f59e0b', text: '#ffffff' },
+    'PUEBLA CHOLULA': { bg: '#d97706', text: '#ffffff' },
+    'MONTERREY CENTRO': { bg: '#8b5cf6', text: '#ffffff' },
+    'MONTERREY TERRANOVA': { bg: '#7c3aed', text: '#ffffff' },
+    'MONTERREY MOVIL': { bg: '#6d28d9', text: '#ffffff' },
+    'VERACRUZ': { bg: '#ef4444', text: '#ffffff' },
+    'XALAPA 20 NOV': { bg: '#ec4899', text: '#ffffff' },
+    'XALAPA ARAUCARIAS': { bg: '#db2777', text: '#ffffff' }
+};
+
+// Color por defecto en caso de no coincidir
+const defaultColor = { bg: '#64748b', text: '#ffffff' };
+
+async function renderCalendar() {
+    const calendarEl = document.getElementById('calendar');
+    if (!calendarEl) return;
+
+    if (!window.cachedLeads) {
+        await fetchLeads();
+    }
+    const leads = window.cachedLeads || [];
+
+    // Mapear leads a eventos
+    const calendarEvents = leads
+        .filter(lead => lead.fecha_cita)
+        .map(lead => {
+            const cleanSucursal = (lead.sucursal || '').toUpperCase().trim();
+            const colors = sucursalColors[cleanSucursal] || defaultColor;
+            return {
+                id: lead.id,
+                title: `${lead.nombre || 'Lead'} - ${lead.vehiculo || 'Sin auto'}`,
+                start: lead.fecha_cita,
+                backgroundColor: colors.bg,
+                borderColor: colors.bg,
+                textColor: colors.text,
+                extendedProps: {
+                    lead: lead
+                }
+            };
+        });
+
+    if (calendarInstance) {
+        calendarInstance.removeAllEvents();
+        calendarInstance.addEventSource(calendarEvents);
+        calendarInstance.render();
+        return;
+    }
+
+    // Inicializar FullCalendar
+    calendarInstance = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'es',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        events: calendarEvents,
+        editable: !isReadOnlyUser(),
+        selectable: !isReadOnlyUser(),
+        eventClick: function(info) {
+            const lead = info.event.extendedProps.lead;
+            if (lead) {
+                // Abrir el modal de edición para el lead correspondiente
+                openLeadPanel(
+                    lead.id,
+                    lead.nombre || '',
+                    lead.etapa || '',
+                    lead.sucursal || '',
+                    lead.vehiculo || '',
+                    lead.numero || '',
+                    lead.observaciones || '',
+                    lead.obs_encargado || '',
+                    lead.fecha_cita || ''
+                );
+            }
+        },
+        dateClick: function(info) {
+            if (isReadOnlyUser()) return;
+            
+            // Verificar si el clic tiene hora (vistas semanal/diaria vs mensual)
+            let formattedDate = info.dateStr;
+            if (formattedDate.length === 10) {
+                // Si es solo fecha, añadir hora por defecto (9:00 AM)
+                formattedDate = `${formattedDate}T09:00`;
+            } else if (formattedDate.length > 16) {
+                // Recortar si tiene zona horaria
+                formattedDate = formattedDate.substring(0, 16);
+            }
+            
+            // Abrir modal de nuevo lead
+            openNewLeadPanel();
+            
+            // Colocar la fecha y hora seleccionada en el formulario
+            document.getElementById('panelLeadFechaCita').value = formattedDate;
+        },
+        eventDrop: async function(info) {
+            if (isReadOnlyUser()) {
+                info.revert();
+                return;
+            }
+            
+            const lead = info.event.extendedProps.lead;
+            const newStart = info.event.start;
+            
+            // Formatear a YYYY-MM-DDTHH:mm
+            const yyyy = newStart.getFullYear();
+            const mm = String(newStart.getMonth() + 1).padStart(2, '0');
+            const dd = String(newStart.getDate()).padStart(2, '0');
+            const hh = String(newStart.getHours()).padStart(2, '0');
+            const min = String(newStart.getMinutes()).padStart(2, '0');
+            const newFechaStr = `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+
+            // Actualizar en base de datos Supabase
+            const { error } = await supabaseClient
+                .from('leads')
+                .update({ fecha_cita: newFechaStr, updated_at: new Date().toISOString() })
+                .eq('id', lead.id);
+
+            if (error) {
+                console.error('Error actualizando fecha:', error);
+                triggerNotification('Error', 'No se pudo actualizar la fecha de la cita', 'warning');
+                info.revert();
+            } else {
+                triggerNotification('Éxito', 'Fecha de la cita actualizada correctamente', 'success');
+                lead.fecha_cita = newFechaStr;
+                
+                // Actualizar cache local
+                if (window.cachedLeads) {
+                    const localLead = window.cachedLeads.find(l => l.id === lead.id);
+                    if (localLead) localLead.fecha_cita = newFechaStr;
+                }
+            }
+        }
+    });
+
+    calendarInstance.render();
+}
+
+function filterCalendarByBranch() {
+    if (!calendarInstance) return;
+    const filterVal = document.getElementById('calendarBranchFilter').value;
+    const leads = window.cachedLeads || [];
+
+    const filteredEvents = leads
+        .filter(lead => {
+            if (!lead.fecha_cita) return false;
+            if (filterVal === 'all') return true;
+            return lead.sucursal === filterVal;
+        })
+        .map(lead => {
+            const cleanSucursal = (lead.sucursal || '').toUpperCase().trim();
+            const colors = sucursalColors[cleanSucursal] || defaultColor;
+            return {
+                id: lead.id,
+                title: `${lead.nombre || 'Lead'} - ${lead.vehiculo || 'Sin auto'}`,
+                start: lead.fecha_cita,
+                backgroundColor: colors.bg,
+                borderColor: colors.bg,
+                textColor: colors.text,
+                extendedProps: {
+                    lead: lead
+                }
+            };
+        });
+
+    calendarInstance.removeAllEvents();
+    calendarInstance.addEventSource(filteredEvents);
+    calendarInstance.render();
+}
