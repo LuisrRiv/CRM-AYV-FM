@@ -495,7 +495,23 @@ function renderReportTable(data) {
     const week = currentFullPeriod.substring(8);
     const isReadOnly = currentUser === 'invitado' || week === 'MONTH';
 
+    let totalPresupuesto = 0;
+    let totalAtendidas = 0;
+    let totalLeads = 0;
+    let totalViables = 0;
+    let totalCitas = 0;
+    let totalDispCount = 0;
+    let totalDispersado = 0;
+
     Object.entries(data).forEach(([zone, stats]) => {
+        totalPresupuesto += Number(stats.presupuesto) || 0;
+        totalAtendidas += Number(stats.atendidas) || 0;
+        totalLeads += Number(stats.leads) || 0;
+        totalViables += Number(stats.viables) || 0;
+        totalCitas += Number(stats.citas) || 0;
+        totalDispCount += Number(stats.disp_count) || 0;
+        totalDispersado += Number(stats.dispersado) || 0;
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="font-medium">${zone}</td>
@@ -509,6 +525,29 @@ function renderReportTable(data) {
         `;
         tbody.appendChild(tr);
     });
+
+    // Totals Row
+    const trTotal = document.createElement('tr');
+    trTotal.style.background = 'rgba(148, 163, 184, 0.15)';
+    trTotal.style.fontWeight = 'bold';
+    trTotal.style.borderTop = '2px solid var(--border-color)';
+    trTotal.style.cursor = 'default';
+    trTotal.style.pointerEvents = 'none';
+
+    const formatCurr = (val) => '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const formatInt = (val) => val.toLocaleString('en-US');
+
+    trTotal.innerHTML = `
+        <td class="font-bold" style="color: var(--text-primary); font-weight: 700;">TOTAL</td>
+        <td style="padding: 1rem; color: var(--text-primary); font-weight: 700; text-align: left; padding-left: 1.5rem;">${formatCurr(totalPresupuesto)}</td>
+        <td style="padding: 1rem; color: var(--text-primary); font-weight: 700; text-align: left; padding-left: 1.5rem;">${formatInt(totalAtendidas)}</td>
+        <td style="padding: 1rem; color: var(--text-primary); font-weight: 700; text-align: center;">${formatInt(totalLeads)}</td>
+        <td style="padding: 1rem; color: var(--text-primary); font-weight: 700; text-align: center;">${formatInt(totalViables)}</td>
+        <td style="padding: 1rem; color: var(--text-primary); font-weight: 700; text-align: center;">${formatInt(totalCitas)}</td>
+        <td style="padding: 1rem; color: var(--text-primary); font-weight: 700; text-align: center;">${formatInt(totalDispCount)}</td>
+        <td style="padding: 1rem; color: var(--success); font-weight: 700; text-align: right; padding-right: 1.5rem;">${formatCurr(totalDispersado)}</td>
+    `;
+    tbody.appendChild(trTotal);
 }
 
 async function saveManualReportData(zone, type, value) {
