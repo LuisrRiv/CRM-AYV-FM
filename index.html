@@ -1095,7 +1095,8 @@
                 <label>Número</label>
                 <div style="display: flex; gap: 0.5rem;">
                     <input type="text" class="form-control" id="panelLeadNumero" style="flex: 1;">
-                    <button class="btn" type="button" onclick="sendWhatsAppFromPanel()" style="padding: 0 1rem; background: #25d366; border-color: #25d366; color: white;" title="Enviar WhatsApp"><i class="fa-brands fa-whatsapp"></i></button>
+                    <button class="btn" type="button" id="btnWasapiSend" onclick="sendWhatsAppFromPanel()" style="padding: 0 1rem; background: var(--accent-primary); border-color: var(--accent-primary); color: #1e293b;" title="Enviar por Wasapi (Automático)"><i class="fa-solid fa-paper-plane"></i></button>
+                    <button class="btn" type="button" id="btnWhatsAppManual" onclick="sendWhatsAppManual()" style="padding: 0 1rem; background: #25d366; border-color: #25d366; color: white;" title="Abrir en WhatsApp (Manual)"><i class="fa-brands fa-whatsapp"></i></button>
                 </div>
             </div>
             <div class="form-group">

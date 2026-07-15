@@ -4850,7 +4850,69 @@ function getWhatsAppLink(phone, lead) {
     return `https://wa.me/${cleaned}?text=${text}`;
 }
 
-function sendWhatsAppFromPanel() {
+async function sendWhatsAppFromPanel() {
+    const phone = document.getElementById('panelLeadNumero').value;
+    const name = document.getElementById('panelLeadNameInput').value;
+    const sucursal = document.getElementById('panelLeadSucursal').value;
+    const vehiculo = document.getElementById('panelLeadVehiculo').value;
+    const etapa = document.getElementById('panelLeadStage').value;
+    const fechaCita = document.getElementById('panelLeadFechaCita').value;
+
+    if (!phone || phone.trim() === '') {
+        triggerNotification('Error', 'El cliente no tiene un número telefónico registrado', 'warning');
+        return;
+    }
+
+    const leadMock = {
+        nombre: name,
+        sucursal: sucursal,
+        vehiculo: vehiculo,
+        etapa: etapa,
+        fecha_cita: fechaCita
+    };
+
+    const message = getWhatsAppTemplate(leadMock);
+    
+    // Cambiar estado visual del botón a cargando
+    const btn = document.getElementById('btnWasapiSend');
+    const originalContent = btn ? btn.innerHTML : null;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    }
+
+    try {
+        triggerNotification('Enviando...', 'Iniciando envío de WhatsApp por Wasapi.', 'info');
+        
+        const { data, error } = await supabaseClient.rpc('send_wasapi_message', {
+            phone: phone,
+            message: message
+        });
+
+        if (error) {
+            console.error('Error al invocar la función RPC de Supabase:', error);
+            triggerNotification('Error de Envío', error.message || 'No se pudo enviar el mensaje por Wasapi.', 'warning');
+            return;
+        }
+
+        if (data && data.success) {
+            triggerNotification('Mensaje Enviado', 'El mensaje se ha enviado exitosamente vía Wasapi.', 'success');
+        } else {
+            const errorMsg = data ? data.error : 'Respuesta inválida del servidor.';
+            triggerNotification('Error de Envío', errorMsg, 'warning');
+        }
+    } catch (e) {
+        console.error('Excepción al invocar función:', e);
+        triggerNotification('Error', 'Ocurrió un error inesperado al conectar con Supabase.', 'warning');
+    } finally {
+        if (btn && originalContent !== null) {
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+        }
+    }
+}
+
+function sendWhatsAppManual() {
     const phone = document.getElementById('panelLeadNumero').value;
     const name = document.getElementById('panelLeadNameInput').value;
     const sucursal = document.getElementById('panelLeadSucursal').value;
