@@ -1093,7 +1093,10 @@
             </div>
             <div class="form-group">
                 <label>Número</label>
-                <input type="text" class="form-control" id="panelLeadNumero">
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" class="form-control" id="panelLeadNumero" style="flex: 1;">
+                    <button class="btn" type="button" onclick="sendWhatsAppFromPanel()" style="padding: 0 1rem; background: #25d366; border-color: #25d366; color: white;" title="Enviar WhatsApp"><i class="fa-brands fa-whatsapp"></i></button>
+                </div>
             </div>
             <div class="form-group">
                 <label>Observaciones</label>

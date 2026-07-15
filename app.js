@@ -965,7 +965,16 @@ async function fetchLeads() {
             <td>${lead.nombre || ''}</td>
             <td>${lead.vehiculo || ''}</td>
             <td><span class="badge ${badgeClass}">${lead.etapa || ''}</span></td>
-            <td>${lead.numero || ''}</td>
+            <td>
+                <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: space-between; min-width: 110px;">
+                    <span>${lead.numero || ''}</span>
+                    ${lead.numero && lead.numero.trim() !== '' ? `
+                        <a href="${getWhatsAppLink(lead.numero, lead)}" target="_blank" style="color: #25d366; font-size: 1.1rem; display: inline-flex;" title="Enviar WhatsApp" onclick="event.stopPropagation();">
+                            <i class="fa-brands fa-whatsapp"></i>
+                        </a>
+                    ` : ''}
+                </div>
+            </td>
             <td><span style="font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); background: var(--bg-dark); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">${lead.creado_por || '-'}</span></td>
             <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${shortObs}</td>
             <td style="color: #6366f1; font-weight: 500; font-style: italic;">${lead.obs_encargado || ''}</td>
@@ -4498,7 +4507,16 @@ async function renderAgendaManana() {
             <td class="font-medium">${escapeHTML(lead.sucursal || '')}</td>
             <td>${escapeHTML(lead.nombre || '')}</td>
             <td>${escapeHTML(lead.vehiculo || '')}</td>
-            <td>${escapeHTML(lead.numero || '')}</td>
+            <td>
+                <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: space-between; min-width: 110px;">
+                    <span>${escapeHTML(lead.numero || '')}</span>
+                    ${lead.numero && lead.numero.trim() !== '' ? `
+                        <a href="${getWhatsAppLink(lead.numero, lead)}" target="_blank" style="color: #25d366; font-size: 1.1rem; display: inline-flex;" title="Enviar WhatsApp" onclick="event.stopPropagation();">
+                            <i class="fa-brands fa-whatsapp"></i>
+                        </a>
+                    ` : ''}
+                </div>
+            </td>
             <td><span style="font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); background: var(--bg-dark); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">${escapeHTML(lead.creado_por || '-')}</span></td>
             <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(lead.observaciones || '')}</td>
             <td style="color: #6366f1; font-weight: 500; font-style: italic;">${escapeHTML(lead.obs_encargado || '')}</td>
@@ -4785,4 +4803,74 @@ function filterCalendarByBranch() {
     calendarInstance.removeAllEvents();
     calendarInstance.addEventSource(filteredEvents);
     calendarInstance.render();
+}
+
+// ==========================================
+// 💬 Módulo de Enlace de WhatsApp
+// ==========================================
+function getWhatsAppTemplate(lead) {
+    if (!lead) return "Estimado(a) cliente, le escribimos por parte de Auto y Varo.";
+    const nombre = lead.nombre || "Cliente";
+    const sucursal = lead.sucursal || "nuestra sucursal";
+    const vehiculo = lead.vehiculo || "el vehículo de su interés";
+    
+    let fechaFormateada = "";
+    if (lead.fecha_cita) {
+        try {
+            const d = new Date(lead.fecha_cita);
+            if (!isNaN(d.getTime())) {
+                const options = { weekday: 'long', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+                fechaFormateada = d.toLocaleDateString('es-MX', options);
+            }
+        } catch(e) {
+            fechaFormateada = lead.fecha_cita;
+        }
+    }
+
+    const etapa = (lead.etapa || '').toUpperCase();
+    if (etapa === 'CITA') {
+        const citaStr = fechaFormateada ? ` el día *${fechaFormateada}*` : "";
+        return `Estimado(a) *${nombre}*, le escribimos por parte de *Auto y Varo* para confirmar su cita programada${citaStr} en nuestra sucursal de *${sucursal}* con el fin de evaluar el vehículo *${vehiculo}*. ¿Tiene alguna duda sobre los requisitos o la ubicación de nuestras oficinas?`;
+    } else if (etapa === 'EN PROCESO') {
+        return `Estimado(a) *${nombre}*, le escribimos por parte de *Auto y Varo*. Nos ponemos en contacto con usted para dar seguimiento a su trámite en proceso para el vehículo *${vehiculo}*. ¿Ha tenido oportunidad de reunir la documentación que tenemos pendiente para continuar?`;
+    } else if (etapa === 'DISPERSADO') {
+        return `Estimado(a) *${nombre}*, le escribimos por parte de *Auto y Varo* para informarle que los fondos de su solicitud para el vehículo *${vehiculo}* han sido dispersados exitosamente. Quedamos a su entera disposición para cualquier aclaración sobre su cuenta.`;
+    } else {
+        return `Estimado(a) *${nombre}*, le escribimos por parte de *Auto y Varo* en relación a su solicitud de información sobre el vehículo *${vehiculo}*. ¿Cómo podemos asistirle el día de hoy?`;
+    }
+}
+
+function getWhatsAppLink(phone, lead) {
+    if (!phone) return '#';
+    let cleaned = phone.replace(/\D/g, ''); // Keep only digits
+    if (cleaned.length === 10) {
+        cleaned = '52' + cleaned; // Add Mexico prefix if it's 10 digits
+    }
+    const text = encodeURIComponent(getWhatsAppTemplate(lead));
+    return `https://wa.me/${cleaned}?text=${text}`;
+}
+
+function sendWhatsAppFromPanel() {
+    const phone = document.getElementById('panelLeadNumero').value;
+    const name = document.getElementById('panelLeadNameInput').value;
+    const sucursal = document.getElementById('panelLeadSucursal').value;
+    const vehiculo = document.getElementById('panelLeadVehiculo').value;
+    const etapa = document.getElementById('panelLeadStage').value;
+    const fechaCita = document.getElementById('panelLeadFechaCita').value;
+
+    if (!phone || phone.trim() === '') {
+        triggerNotification('Error', 'El cliente no tiene un número telefónico registrado', 'warning');
+        return;
+    }
+
+    const leadMock = {
+        nombre: name,
+        sucursal: sucursal,
+        vehiculo: vehiculo,
+        etapa: etapa,
+        fecha_cita: fechaCita
+    };
+
+    const link = getWhatsAppLink(phone, leadMock);
+    window.open(link, '_blank');
 }
