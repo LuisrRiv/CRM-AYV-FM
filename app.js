@@ -290,10 +290,12 @@ async function updateReportView() {
     updateWeekLabels(month);
     
     const title = document.getElementById('manualEntryTitle');
+    const subtitle = document.getElementById('manualEntrySubtitle');
     if (title) {
         const monthName = document.getElementById('selectMonth').selectedOptions[0].text;
         if (week === 'MONTH') {
             title.innerText = `Resumen Consolidado - ${monthName}`;
+            if (subtitle) subtitle.innerHTML = '<span style="color: var(--accent-primary); font-weight: 500;"><i class="fa-solid fa-lock"></i> Vista de solo lectura. Para ingresar o modificar datos manuales, selecciona una semana específica (Semana 1 - 6) arriba.</span>';
         } else {
             const range = getWeekRange(month, week);
             const formatLabel = (dateStr) => {
@@ -301,6 +303,7 @@ async function updateReportView() {
                 return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
             };
             title.innerText = `Entrada de Datos Manuales - ${week.replace('W', 'Semana ')} (${formatLabel(range.start)} - ${formatLabel(range.end)})`;
+            if (subtitle) subtitle.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Modifica cualquier campo de la tabla. Se guardará automáticamente.';
         }
     }
 
@@ -398,13 +401,51 @@ function updateWeekDropdown(selectId, yearMonth, includeAllOption = false) {
     }
 }
 
+let lastReportLeads = [];
+let lastReportDispersiones = [];
+
+async function safeUpsertReporteDatos(zona, campo, valor, periodo) {
+    const val = parseFloat(valor) || 0;
+    // 1. Intentar upsert estándar
+    const { error: upsertErr } = await supabaseClient
+        .from('reporte_datos')
+        .upsert({ zona: zona, campo: campo, valor: val, periodo: periodo }, { onConflict: 'periodo,zona,campo' });
+
+    if (!upsertErr) return null;
+
+    console.warn('Upsert estándar falló, ejecutando fallback select + update/insert:', upsertErr);
+
+    // 2. Fallback si no existe la restricción UNIQUE (periodo, zona, campo) en PostgreSQL
+    const { data: existing, error: selectErr } = await supabaseClient
+        .from('reporte_datos')
+        .select('id')
+        .eq('zona', zona)
+        .eq('campo', campo)
+        .eq('periodo', periodo);
+
+    if (selectErr) return selectErr;
+
+    if (existing && existing.length > 0) {
+        const { error: updateErr } = await supabaseClient
+            .from('reporte_datos')
+            .update({ valor: val })
+            .eq('id', existing[0].id);
+        return updateErr;
+    } else {
+        const { error: insertErr } = await supabaseClient
+            .from('reporte_datos')
+            .insert({ zona: zona, campo: campo, valor: val, periodo: periodo });
+        return insertErr;
+    }
+}
+
 async function fetchManualReportData() {
     const { data, error } = await supabaseClient.from('reporte_datos').select('*');
     if (error) {
         console.error('Error fetching manual overrides:', error);
         return [];
     }
-    return data;
+    return data || [];
 }
 
 async function generateReport() {
@@ -430,29 +471,36 @@ async function generateReport() {
         return;
     }
 
+    lastReportLeads = leads || [];
+    lastReportDispersiones = dispersiones || [];
     manualOverrides = await fetchManualReportData();
+
+    rebuildAndRenderReport(true);
+}
+
+function rebuildAndRenderReport(renderFullTable = true) {
+    const month = currentFullPeriod.substring(0, 7);
+    const week = currentFullPeriod.substring(8);
+    const leads = lastReportLeads;
+    const dispersiones = lastReportDispersiones;
 
     const reportData = {};
     Object.keys(zoneMapping).forEach(zone => {
         reportData[zone] = { leads: 0, viables: 0, citas: 0, dispersado: 0, disp_count: 0, presupuesto: 0, atendidas: 0 };
         
         if (week === 'MONTH') {
-            // AGGREGATE MONTHLY: Sum of all calendar weeks
             const weeks = getCalendarWeeks(month);
             const weekList = weeks.map((_, idx) => `W${idx + 1}`);
             weekList.forEach(w => {
                 const p = `${month}-${w}`;
                 const wRange = getWeekRange(month, w);
                 
-                // Get manual overrides for this specific week
                 const overrides = manualOverrides.filter(o => o.zona === zone && o.periodo === p);
                 const getManual = (campo) => overrides.find(o => o.campo === campo)?.valor;
 
-                // Budget and Atendidas are ALWAYS manual
-                reportData[zone].presupuesto += getManual('budget') || 0;
-                reportData[zone].atendidas += getManual('atendidas') || 0;
+                reportData[zone].presupuesto += getManual('budget') ?? 0;
+                reportData[zone].atendidas += getManual('atendidas') ?? 0;
 
-                // For the rest: Manual Overrides OR Real Data for that week
                 const wLeads = leads.filter(l => l.sucursal && zoneMapping[zone].includes(l.sucursal) && l.created_at >= wRange.start && l.created_at <= wRange.end + 'T23:59:59');
                 const wDisps = dispersiones.filter(d => d.sucursal && zoneMapping[zone].includes(d.sucursal) && d.created_at >= wRange.start && d.created_at <= wRange.end + 'T23:59:59');
 
@@ -463,7 +511,6 @@ async function generateReport() {
                 reportData[zone].dispersado += getManual('dispersado') ?? wDisps.reduce((acc, d) => acc + (parseFloat(d.monto) || 0), 0);
             });
         } else {
-            // SINGLE WEEK VIEW
             const overrides = manualOverrides.filter(o => o.zona === zone && o.periodo === currentFullPeriod);
             const getManual = (campo) => overrides.find(o => o.campo === campo)?.valor;
 
@@ -482,7 +529,11 @@ async function generateReport() {
         }
     });
 
-    renderReportTable(reportData);
+    if (renderFullTable) {
+        renderReportTable(reportData);
+    } else {
+        updateReportTotalsRow(reportData);
+    }
     updateReportCharts(reportData);
 }
 
@@ -491,27 +542,10 @@ function renderReportTable(data) {
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    const currentUser = localStorage.getItem('crm-logged-in');
     const week = currentFullPeriod.substring(8);
-    const isReadOnly = currentUser === 'invitado' || week === 'MONTH';
-
-    let totalPresupuesto = 0;
-    let totalAtendidas = 0;
-    let totalLeads = 0;
-    let totalViables = 0;
-    let totalCitas = 0;
-    let totalDispCount = 0;
-    let totalDispersado = 0;
+    const isReadOnly = isReadOnlyUser() || week === 'MONTH';
 
     Object.entries(data).forEach(([zone, stats]) => {
-        totalPresupuesto += Number(stats.presupuesto) || 0;
-        totalAtendidas += Number(stats.atendidas) || 0;
-        totalLeads += Number(stats.leads) || 0;
-        totalViables += Number(stats.viables) || 0;
-        totalCitas += Number(stats.citas) || 0;
-        totalDispCount += Number(stats.disp_count) || 0;
-        totalDispersado += Number(stats.dispersado) || 0;
-
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="font-medium">${zone}</td>
@@ -526,13 +560,41 @@ function renderReportTable(data) {
         tbody.appendChild(tr);
     });
 
-    // Totals Row
-    const trTotal = document.createElement('tr');
-    trTotal.style.background = 'rgba(148, 163, 184, 0.15)';
-    trTotal.style.fontWeight = 'bold';
-    trTotal.style.borderTop = '2px solid var(--border-color)';
-    trTotal.style.cursor = 'default';
-    trTotal.style.pointerEvents = 'none';
+    updateReportTotalsRow(data);
+}
+
+function updateReportTotalsRow(data) {
+    let totalPresupuesto = 0;
+    let totalAtendidas = 0;
+    let totalLeads = 0;
+    let totalViables = 0;
+    let totalCitas = 0;
+    let totalDispCount = 0;
+    let totalDispersado = 0;
+
+    Object.values(data).forEach(stats => {
+        totalPresupuesto += Number(stats.presupuesto) || 0;
+        totalAtendidas += Number(stats.atendidas) || 0;
+        totalLeads += Number(stats.leads) || 0;
+        totalViables += Number(stats.viables) || 0;
+        totalCitas += Number(stats.citas) || 0;
+        totalDispCount += Number(stats.disp_count) || 0;
+        totalDispersado += Number(stats.dispersado) || 0;
+    });
+
+    const tbody = document.getElementById('reportTableBody');
+    if (!tbody) return;
+
+    let trTotal = tbody.querySelector('.totals-row');
+    if (!trTotal) {
+        trTotal = document.createElement('tr');
+        trTotal.className = 'totals-row';
+        trTotal.style.background = 'rgba(148, 163, 184, 0.15)';
+        trTotal.style.fontWeight = 'bold';
+        trTotal.style.borderTop = '2px solid var(--border-color)';
+        trTotal.style.cursor = 'default';
+        tbody.appendChild(trTotal);
+    }
 
     const formatCurr = (val) => '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const formatInt = (val) => val.toLocaleString('en-US');
@@ -547,25 +609,29 @@ function renderReportTable(data) {
         <td style="padding: 1rem; color: var(--text-primary); font-weight: 700; text-align: center;">${formatInt(totalDispCount)}</td>
         <td style="padding: 1rem; color: var(--success); font-weight: 700; text-align: right; padding-right: 1.5rem;">${formatCurr(totalDispersado)}</td>
     `;
-    tbody.appendChild(trTotal);
 }
 
 async function saveManualReportData(zone, type, value) {
     const week = currentFullPeriod.substring(8);
-    if (week === 'MONTH') return;
+    if (week === 'MONTH' || isReadOnlyUser()) return;
 
     const campo = type === 'budget' ? 'budget' : type;
     const val = parseFloat(value) || 0;
 
-    const { error } = await supabaseClient
-        .from('reporte_datos')
-        .upsert({ zona: zone, campo: campo, valor: val, periodo: currentFullPeriod }, { onConflict: 'periodo,zona,campo' });
+    const existingIdx = manualOverrides.findIndex(o => o.zona === zone && o.campo === campo && o.periodo === currentFullPeriod);
+    if (existingIdx >= 0) {
+        manualOverrides[existingIdx].valor = val;
+    } else {
+        manualOverrides.push({ zona: zone, campo: campo, valor: val, periodo: currentFullPeriod });
+    }
+
+    rebuildAndRenderReport(false);
+
+    const error = await safeUpsertReporteDatos(zone, campo, val, currentFullPeriod);
 
     if (error) {
         console.error('Error saving report data:', error);
         triggerNotification('Error', 'No se pudo guardar el dato permanentemente', 'warning');
-    } else {
-        generateReport(); // Refresh charts
     }
 }
 
@@ -896,14 +962,7 @@ function renderRegistroLeadsTable(manualData, month) {
 async function saveRegistroLeadData(sucursal, campo, value, periodo) {
     const val = parseInt(value) || 0;
 
-    const { error } = await supabaseClient
-        .from('reporte_datos')
-        .upsert({ 
-            zona: sucursal, 
-            campo: campo, 
-            valor: val, 
-            periodo: periodo 
-        }, { onConflict: 'periodo,zona,campo' });
+    const error = await safeUpsertReporteDatos(sucursal, campo, val, periodo);
 
     if (error) {
         console.error('Error saving registro data:', error);
@@ -996,6 +1055,11 @@ async function fetchLeads() {
     }
     
     if (typeof applyGlobalFilter === 'function') applyGlobalFilter();
+    
+    // Si el calendario ya está inicializado, sincronizarlo inmediatamente
+    if (calendarInstance && typeof updateCalendarEvents === 'function') {
+        updateCalendarEvents();
+    }
 }
 
 // ==========================================
@@ -2257,7 +2321,7 @@ function switchView(targetId) {
     if(targetSection) targetSection.classList.add('active');
     
     // Forzar actualización visual/gráfica cuando la sección se vuelve visible
-    setTimeout(() => {
+    setTimeout(async () => {
         if (targetId === 'reportes') {
             generateReport();
         } else if (targetId === 'dispersiones') {
@@ -2265,6 +2329,9 @@ function switchView(targetId) {
         } else if (targetId === 'dashboard') {
             if (typeof updateDashboardCharts === 'function') updateDashboardCharts();
             if (typeof updateCloserSummary === 'function') updateCloserSummary();
+        } else if (targetId === 'leads') {
+            // Refrescar reporte de citas al entrar
+            if (typeof fetchLeads === 'function') await fetchLeads();
         } else if (targetId === 'registroLeads') {
             if (typeof updateRegistroLeadsView === 'function') updateRegistroLeadsView();
         } else if (targetId === 'demeritos') {
@@ -2276,6 +2343,8 @@ function switchView(targetId) {
         } else if (targetId === 'agendaManana') {
             if (typeof renderAgendaManana === 'function') renderAgendaManana();
         } else if (targetId === 'calendario') {
+            // Forzar recarga de leads frescos desde Supabase antes de renderizar el calendario
+            if (typeof fetchLeads === 'function') await fetchLeads();
             if (typeof renderCalendar === 'function') renderCalendar();
         }
     }, 50);
@@ -4647,16 +4716,9 @@ const sucursalColors = {
 // Color por defecto en caso de no coincidir
 const defaultColor = { bg: '#64748b', text: '#ffffff' };
 
-async function renderCalendar() {
-    const calendarEl = document.getElementById('calendar');
-    if (!calendarEl) return;
-
-    if (!window.cachedLeads) {
-        await fetchLeads();
-    }
+function updateCalendarEvents() {
+    if (!calendarInstance) return;
     const leads = window.cachedLeads || [];
-
-    // Mapear leads a eventos
     const calendarEvents = leads
         .filter(lead => lead.fecha_cita)
         .map(lead => {
@@ -4675,12 +4737,46 @@ async function renderCalendar() {
             };
         });
 
+    // Remover limpia y completamente las fuentes anteriores para evitar duplicados y datos obsoletos
+    const sources = calendarInstance.getEventSources();
+    sources.forEach(src => src.remove());
+    
+    // Agregar la nueva fuente actualizada
+    calendarInstance.addEventSource(calendarEvents);
+    calendarInstance.render();
+}
+
+async function renderCalendar() {
+    const calendarEl = document.getElementById('calendar');
+    if (!calendarEl) return;
+
+    if (!window.cachedLeads) {
+        await fetchLeads();
+    }
+
     if (calendarInstance) {
-        calendarInstance.removeAllEvents();
-        calendarInstance.addEventSource(calendarEvents);
-        calendarInstance.render();
+        updateCalendarEvents();
         return;
     }
+
+    const leads = window.cachedLeads || [];
+    const calendarEvents = leads
+        .filter(lead => lead.fecha_cita)
+        .map(lead => {
+            const cleanSucursal = (lead.sucursal || '').toUpperCase().trim();
+            const colors = sucursalColors[cleanSucursal] || defaultColor;
+            return {
+                id: lead.id,
+                title: `${lead.nombre || 'Lead'} - ${lead.vehiculo || 'Sin auto'}`,
+                start: lead.fecha_cita,
+                backgroundColor: colors.bg,
+                borderColor: colors.bg,
+                textColor: colors.text,
+                extendedProps: {
+                    lead: lead
+                }
+            };
+        });
 
     // Inicializar FullCalendar
     calendarInstance = new FullCalendar.Calendar(calendarEl, {
@@ -4766,6 +4862,9 @@ async function renderCalendar() {
                     const localLead = window.cachedLeads.find(l => l.id === lead.id);
                     if (localLead) localLead.fecha_cita = newFechaStr;
                 }
+                
+                // Forzar refresco global de datos (actualizar tablas, etc.)
+                await fetchLeads();
             }
         }
     });
