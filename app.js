@@ -2291,6 +2291,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ==========================================
 const allowedUsers = [
     { user: 'adminlr', pass: 'AdminLR123', initials: 'AD', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
+    { user: 'jorge anzures', pass: 'Jorge123', initials: 'JA', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
+    { user: 'jorge', pass: 'Jorge123', initials: 'JA', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
     { user: 'franco lozada', pass: 'Franco123', initials: 'FL', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
     { user: 'fabiola mendoza', pass: 'Fabiola123', initials: 'FM', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas'], readOnly: true },
     { user: 'fatima morales', pass: 'Fatima123', initials: 'FT', panels: ['kanban', 'leads', 'agendaManana', 'calendario', 'assets', 'chat'], readOnly: true },
