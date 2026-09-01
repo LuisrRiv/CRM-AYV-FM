@@ -490,6 +490,36 @@ async function generateReport() {
     rebuildAndRenderReport(true);
 }
 
+function getRegistroLeadsTotalsForZone(zone, period) {
+    const sucursales = zoneMapping[zone] || [];
+    let totalLeads = 0;
+    let totalViables = 0;
+    let hasData = false;
+
+    sucursales.forEach(suc => {
+        const getVal = (campo) => {
+            const matches = manualOverrides.filter(d => d.zona === suc && d.periodo === period && d.campo === campo);
+            return matches.length > 0 ? (parseFloat(matches[matches.length - 1].valor) || 0) : 0;
+        };
+
+        const legB = getVal('total_brutos');
+        const legV = getVal('total_viables');
+        const gB = getVal('google_brutos');
+        const gV = getVal('google_viables');
+        const mB = getVal('meta_brutos');
+        const mV = getVal('meta_viables');
+
+        if (legB || legV || gB || gV || mB || mV) {
+            hasData = true;
+        }
+
+        totalLeads += (legB + gB + mB);
+        totalViables += (legV + gV + mV);
+    });
+
+    return { totalLeads, totalViables, hasData };
+}
+
 function rebuildAndRenderReport(renderFullTable = true) {
     const month = currentFullPeriod.substring(0, 7);
     const week = currentFullPeriod.substring(8);
@@ -519,8 +549,11 @@ function rebuildAndRenderReport(renderFullTable = true) {
                 const wLeads = leads.filter(l => l.sucursal && zoneMapping[zone].includes(l.sucursal) && l.created_at >= wRange.start && l.created_at <= wRange.end + 'T23:59:59');
                 const wDisps = dispersiones.filter(d => d.sucursal && zoneMapping[zone].includes(d.sucursal) && d.created_at >= wRange.start && d.created_at <= wRange.end + 'T23:59:59');
 
-                reportData[zone].leads += getManual('leads') ?? wLeads.length;
-                reportData[zone].viables += getManual('viables') ?? wLeads.filter(l => ['DISPERSADO', 'EN PROCESO', 'CITA'].includes(l.etapa)).length;
+                const regTotals = getRegistroLeadsTotalsForZone(zone, p);
+                const wDefaultViables = wLeads.filter(l => ['DISPERSADO', 'EN PROCESO', 'CITA'].includes(l.etapa)).length;
+
+                reportData[zone].leads += getManual('leads') ?? (regTotals.hasData ? regTotals.totalLeads : wLeads.length);
+                reportData[zone].viables += getManual('viables') ?? (regTotals.hasData ? regTotals.totalViables : wDefaultViables);
                 reportData[zone].citas += getManual('citas') ?? wLeads.filter(l => l.etapa === 'CITA').length;
                 reportData[zone].disp_count += getManual('disp_count') ?? wDisps.length;
                 reportData[zone].dispersado += getManual('dispersado') ?? wDisps.reduce((acc, d) => acc + (parseFloat(d.monto) || 0), 0);
@@ -535,11 +568,14 @@ function rebuildAndRenderReport(renderFullTable = true) {
             const zLeads = leads.filter(l => l.sucursal && zoneMapping[zone].includes(l.sucursal));
             const zDisps = dispersiones.filter(d => d.sucursal && zoneMapping[zone].includes(d.sucursal));
 
+            const regTotals = getRegistroLeadsTotalsForZone(zone, currentFullPeriod);
+            const defaultViables = zLeads.filter(l => ['DISPERSADO', 'EN PROCESO', 'CITA'].includes(l.etapa)).length;
+
             reportData[zone] = {
                 presupuesto: getManual('budget') ?? 0,
                 atendidas: getManual('atendidas') ?? 0,
-                leads: getManual('leads') ?? zLeads.length,
-                viables: getManual('viables') ?? zLeads.filter(l => ['DISPERSADO', 'EN PROCESO', 'CITA'].includes(l.etapa)).length,
+                leads: getManual('leads') ?? (regTotals.hasData ? regTotals.totalLeads : zLeads.length),
+                viables: getManual('viables') ?? (regTotals.hasData ? regTotals.totalViables : defaultViables),
                 citas: getManual('citas') ?? zLeads.filter(l => l.etapa === 'CITA').length,
                 disp_count: getManual('disp_count') ?? zDisps.length,
                 dispersado: getManual('dispersado') ?? zDisps.reduce((acc, d) => acc + (parseFloat(d.monto) || 0), 0)
