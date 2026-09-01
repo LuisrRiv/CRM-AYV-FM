@@ -429,7 +429,7 @@ async function safeUpsertReporteDatos(zona, campo, valor, periodo) {
         const { error: updateErr } = await supabaseClient
             .from('reporte_datos')
             .update({ valor: val })
-            .eq('id', existing[0].id);
+            .in('id', existing.map(e => e.id));
         return updateErr;
     } else {
         const { error: insertErr } = await supabaseClient
@@ -496,7 +496,10 @@ function rebuildAndRenderReport(renderFullTable = true) {
                 const wRange = getWeekRange(month, w);
                 
                 const overrides = manualOverrides.filter(o => o.zona === zone && o.periodo === p);
-                const getManual = (campo) => overrides.find(o => o.campo === campo)?.valor;
+                const getManual = (campo) => {
+                    const matches = overrides.filter(o => o.campo === campo);
+                    return matches.length > 0 ? matches[matches.length - 1].valor : undefined;
+                };
 
                 reportData[zone].presupuesto += getManual('budget') ?? 0;
                 reportData[zone].atendidas += getManual('atendidas') ?? 0;
@@ -512,7 +515,10 @@ function rebuildAndRenderReport(renderFullTable = true) {
             });
         } else {
             const overrides = manualOverrides.filter(o => o.zona === zone && o.periodo === currentFullPeriod);
-            const getManual = (campo) => overrides.find(o => o.campo === campo)?.valor;
+            const getManual = (campo) => {
+                const matches = overrides.filter(o => o.campo === campo);
+                return matches.length > 0 ? matches[matches.length - 1].valor : undefined;
+            };
 
             const zLeads = leads.filter(l => l.sucursal && zoneMapping[zone].includes(l.sucursal));
             const zDisps = dispersiones.filter(d => d.sucursal && zoneMapping[zone].includes(d.sucursal));
@@ -537,6 +543,19 @@ function rebuildAndRenderReport(renderFullTable = true) {
     updateReportCharts(reportData);
 }
 
+function updateReportRowLocally(zone, type, value) {
+    const week = currentFullPeriod.substring(8);
+    if (week === 'MONTH' || isReadOnlyUser()) return;
+
+    const campo = type === 'budget' ? 'budget' : type;
+    const val = parseFloat(value) || 0;
+
+    manualOverrides = manualOverrides.filter(o => !(o.zona === zone && o.campo === campo && o.periodo === currentFullPeriod));
+    manualOverrides.push({ zona: zone, campo: campo, valor: val, periodo: currentFullPeriod });
+
+    rebuildAndRenderReport(false);
+}
+
 function renderReportTable(data) {
     const tbody = document.getElementById('reportTableBody');
     if (!tbody) return;
@@ -549,13 +568,13 @@ function renderReportTable(data) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="font-medium">${zone}</td>
-            <td><input type="number" step="any" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 120px;" value="${stats.presupuesto}" onchange="saveManualReportData('${zone}', 'budget', this.value)"></td>
-            <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 80px;" value="${stats.atendidas}" onchange="saveManualReportData('${zone}', 'atendidas', this.value)"></td>
-            <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 60px; text-align: center;" value="${stats.leads}" onchange="saveManualReportData('${zone}', 'leads', this.value)"></td>
-            <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 60px; text-align: center;" value="${stats.viables}" onchange="saveManualReportData('${zone}', 'viables', this.value)"></td>
-            <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 60px; text-align: center;" value="${stats.citas}" onchange="saveManualReportData('${zone}', 'citas', this.value)"></td>
-            <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 60px; text-align: center;" value="${stats.disp_count}" onchange="saveManualReportData('${zone}', 'disp_count', this.value)"></td>
-            <td><input type="number" step="any" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 120px; text-align: right; color: var(--success); font-weight: 600;" value="${stats.dispersado}" onchange="saveManualReportData('${zone}', 'dispersado', this.value)"></td>
+            <td><input type="number" step="any" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 120px;" value="${stats.presupuesto}" oninput="updateReportRowLocally('${zone}', 'budget', this.value)" onchange="saveManualReportData('${zone}', 'budget', this.value)"></td>
+            <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 80px;" value="${stats.atendidas}" oninput="updateReportRowLocally('${zone}', 'atendidas', this.value)" onchange="saveManualReportData('${zone}', 'atendidas', this.value)"></td>
+            <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 60px; text-align: center;" value="${stats.leads}" oninput="updateReportRowLocally('${zone}', 'leads', this.value)" onchange="saveManualReportData('${zone}', 'leads', this.value)"></td>
+            <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 60px; text-align: center;" value="${stats.viables}" oninput="updateReportRowLocally('${zone}', 'viables', this.value)" onchange="saveManualReportData('${zone}', 'viables', this.value)"></td>
+            <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 60px; text-align: center;" value="${stats.citas}" oninput="updateReportRowLocally('${zone}', 'citas', this.value)" onchange="saveManualReportData('${zone}', 'citas', this.value)"></td>
+            <td><input type="number" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 60px; text-align: center;" value="${stats.disp_count}" oninput="updateReportRowLocally('${zone}', 'disp_count', this.value)" onchange="saveManualReportData('${zone}', 'disp_count', this.value)"></td>
+            <td><input type="number" step="any" class="form-control" ${isReadOnly ? 'readonly disabled' : ''} style="padding: 0.25rem 0.5rem; width: 120px; text-align: right; color: var(--success); font-weight: 600;" value="${stats.dispersado}" oninput="updateReportRowLocally('${zone}', 'dispersado', this.value)" onchange="saveManualReportData('${zone}', 'dispersado', this.value)"></td>
         `;
         tbody.appendChild(tr);
     });
@@ -618,12 +637,8 @@ async function saveManualReportData(zone, type, value) {
     const campo = type === 'budget' ? 'budget' : type;
     const val = parseFloat(value) || 0;
 
-    const existingIdx = manualOverrides.findIndex(o => o.zona === zone && o.campo === campo && o.periodo === currentFullPeriod);
-    if (existingIdx >= 0) {
-        manualOverrides[existingIdx].valor = val;
-    } else {
-        manualOverrides.push({ zona: zone, campo: campo, valor: val, periodo: currentFullPeriod });
-    }
+    manualOverrides = manualOverrides.filter(o => !(o.zona === zone && o.campo === campo && o.periodo === currentFullPeriod));
+    manualOverrides.push({ zona: zone, campo: campo, valor: val, periodo: currentFullPeriod });
 
     rebuildAndRenderReport(false);
 
@@ -781,7 +796,14 @@ function setupReportRealtime() {
     supabaseClient
         .channel('report-sync')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'reporte_datos' }, () => {
-            generateReport();
+            const activeEl = document.activeElement;
+            const isEditingReportTable = activeEl && document.getElementById('reportTableBody')?.contains(activeEl);
+
+            if (!isEditingReportTable) {
+                generateReport();
+            } else {
+                fetchManualReportData().then(data => { if (data) manualOverrides = data; });
+            }
             updateRegistroLeadsView();
         })
         .subscribe();
@@ -2306,7 +2328,8 @@ const allowedUsers = [
 
 function isReadOnlyUser() {
     const session = localStorage.getItem('crm-logged-in');
-    const u = allowedUsers.find(x => x.user === session);
+    if (!session) return false;
+    const u = allowedUsers.find(x => x.user === session.toLowerCase().trim());
     return u ? !!u.readOnly : false;
 }
 
