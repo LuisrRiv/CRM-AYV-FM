@@ -212,7 +212,7 @@ const zoneMapping = {
 
 let manualOverrides = [];
 let isSavingReportData = false;
-let currentFullPeriod = '2026-05-W1';
+let currentFullPeriod = '2026-08-W1';
 
 function getCalendarWeeks(yearMonth) {
     const [year, month] = yearMonth.split('-').map(Number);
@@ -283,9 +283,19 @@ function getWeekRange(yearMonth, week) {
 }
 
 async function updateReportView() {
-    const month = document.getElementById('selectMonth').value;
-    const week = document.getElementById('selectWeek').value;
+    const monthSelect = document.getElementById('selectMonth');
+    const weekSelect = document.getElementById('selectWeek');
+    if (!monthSelect || !weekSelect) return;
+
+    const month = monthSelect.value;
+    const week = weekSelect.value;
     currentFullPeriod = `${month}-${week}`;
+
+    // Sync Registro de Leads month dropdown
+    const regMonthSelect = document.getElementById('registroMonth');
+    if (regMonthSelect && regMonthSelect.value !== month) {
+        regMonthSelect.value = month;
+    }
     
     // Actualizar los labels de las semanas con fechas reales
     updateWeekLabels(month);
@@ -293,7 +303,7 @@ async function updateReportView() {
     const title = document.getElementById('manualEntryTitle');
     const subtitle = document.getElementById('manualEntrySubtitle');
     if (title) {
-        const monthName = document.getElementById('selectMonth').selectedOptions[0].text;
+        const monthName = monthSelect.selectedOptions[0].text;
         if (week === 'MONTH') {
             title.innerText = `Resumen Consolidado - ${monthName}`;
             if (subtitle) subtitle.innerHTML = '<span style="color: var(--accent-primary); font-weight: 500;"><i class="fa-solid fa-lock"></i> Vista de solo lectura. Para ingresar o modificar datos manuales, selecciona una semana específica (Semana 1 - 6) arriba.</span>';
@@ -905,7 +915,19 @@ const sucursalesList = [
 ];
 
 async function updateRegistroLeadsView() {
-    const month = document.getElementById('registroMonth').value;
+    const regSelect = document.getElementById('registroMonth');
+    if (!regSelect) return;
+    const month = regSelect.value;
+
+    const reportMonthSelect = document.getElementById('selectMonth');
+    if (reportMonthSelect && reportMonthSelect.value !== month) {
+        reportMonthSelect.value = month;
+        const weekSelect = document.getElementById('selectWeek');
+        if (weekSelect) {
+            currentFullPeriod = `${month}-${weekSelect.value}`;
+        }
+    }
+
     const { data, error } = await supabaseClient
         .from('reporte_datos')
         .select('*')
@@ -916,7 +938,12 @@ async function updateRegistroLeadsView() {
         return;
     }
 
-    renderRegistroLeadsTable(data, month);
+    const allData = await fetchManualReportData();
+    if (allData !== null) {
+        manualOverrides = allData;
+    }
+
+    renderRegistroLeadsTable(data || [], month);
 }
 
 function renderRegistroLeadsTable(manualData, month) {
@@ -2437,7 +2464,17 @@ function switchView(targetId) {
     // Forzar actualización visual/gráfica cuando la sección se vuelve visible
     setTimeout(async () => {
         if (targetId === 'reportes') {
-            generateReport();
+            const reportMonthSelect = document.getElementById('selectMonth');
+            const regMonthSelect = document.getElementById('registroMonth');
+            const weekSelect = document.getElementById('selectWeek');
+            if (reportMonthSelect && regMonthSelect && reportMonthSelect.value !== regMonthSelect.value) {
+                reportMonthSelect.value = regMonthSelect.value;
+            }
+            if (reportMonthSelect && weekSelect) {
+                currentFullPeriod = `${reportMonthSelect.value}-${weekSelect.value}`;
+                updateWeekLabels(reportMonthSelect.value);
+            }
+            await generateReport();
         } else if (targetId === 'dispersiones') {
             if (typeof updateCloserSummary === 'function') updateCloserSummary();
         } else if (targetId === 'dashboard') {
@@ -2447,7 +2484,12 @@ function switchView(targetId) {
             // Refrescar reporte de citas al entrar
             if (typeof fetchLeads === 'function') await fetchLeads();
         } else if (targetId === 'registroLeads') {
-            if (typeof updateRegistroLeadsView === 'function') updateRegistroLeadsView();
+            const reportMonthSelect = document.getElementById('selectMonth');
+            const regMonthSelect = document.getElementById('registroMonth');
+            if (reportMonthSelect && regMonthSelect && regMonthSelect.value !== reportMonthSelect.value) {
+                regMonthSelect.value = reportMonthSelect.value;
+            }
+            if (typeof updateRegistroLeadsView === 'function') await updateRegistroLeadsView();
         } else if (targetId === 'demeritos') {
             if (typeof renderAsistenciasView === 'function') renderAsistenciasView();
         } else if (targetId === 'demeritosComerciales') {
