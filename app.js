@@ -211,6 +211,7 @@ const zoneMapping = {
 };
 
 let manualOverrides = [];
+let isSavingReportData = false;
 let currentFullPeriod = '2026-05-W1';
 
 function getCalendarWeeks(yearMonth) {
@@ -473,7 +474,18 @@ async function generateReport() {
 
     lastReportLeads = leads || [];
     lastReportDispersiones = dispersiones || [];
-    manualOverrides = await fetchManualReportData();
+    
+    const dbOverrides = await fetchManualReportData();
+    const merged = [...dbOverrides];
+    manualOverrides.forEach(localItem => {
+        const idx = merged.findIndex(m => m.zona === localItem.zona && m.campo === localItem.campo && m.periodo === localItem.periodo);
+        if (idx >= 0) {
+            merged[idx] = localItem;
+        } else {
+            merged.push(localItem);
+        }
+    });
+    manualOverrides = merged;
 
     rebuildAndRenderReport(true);
 }
@@ -642,7 +654,9 @@ async function saveManualReportData(zone, type, value) {
 
     rebuildAndRenderReport(false);
 
+    isSavingReportData = true;
     const error = await safeUpsertReporteDatos(zone, campo, val, currentFullPeriod);
+    setTimeout(() => { isSavingReportData = false; }, 2000);
 
     if (error) {
         console.error('Error saving report data:', error);
@@ -795,14 +809,23 @@ function updateReportCharts(data) {
 function setupReportRealtime() {
     supabaseClient
         .channel('report-sync')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'reporte_datos' }, () => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'reporte_datos' }, async () => {
+            if (isSavingReportData) return;
+
             const activeEl = document.activeElement;
             const isEditingReportTable = activeEl && document.getElementById('reportTableBody')?.contains(activeEl);
 
             if (!isEditingReportTable) {
-                generateReport();
+                await generateReport();
             } else {
-                fetchManualReportData().then(data => { if (data) manualOverrides = data; });
+                fetchManualReportData().then(data => {
+                    if (data) {
+                        data.forEach(dbItem => {
+                            const idx = manualOverrides.findIndex(m => m.zona === dbItem.zona && m.campo === dbItem.campo && m.periodo === dbItem.periodo);
+                            if (idx === -1) manualOverrides.push(dbItem);
+                        });
+                    }
+                });
             }
             updateRegistroLeadsView();
         })
