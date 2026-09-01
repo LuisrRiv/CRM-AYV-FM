@@ -410,7 +410,7 @@ async function safeUpsertReporteDatos(zona, campo, valor, periodo) {
     // 1. Intentar upsert estándar
     const { error: upsertErr } = await supabaseClient
         .from('reporte_datos')
-        .upsert({ zona: zona, campo: campo, valor: val, periodo: periodo }, { onConflict: 'periodo,zona,campo' });
+        .upsert([{ zona: zona, campo: campo, valor: val, periodo: periodo }], { onConflict: 'periodo,zona,campo' });
 
     if (!upsertErr) return null;
 
@@ -435,7 +435,7 @@ async function safeUpsertReporteDatos(zona, campo, valor, periodo) {
     } else {
         const { error: insertErr } = await supabaseClient
             .from('reporte_datos')
-            .insert({ zona: zona, campo: campo, valor: val, periodo: periodo });
+            .insert([{ zona: zona, campo: campo, valor: val, periodo: periodo }]);
         return insertErr;
     }
 }
@@ -450,6 +450,12 @@ async function fetchManualReportData() {
 }
 
 async function generateReport() {
+    const monthEl = document.getElementById('selectMonth');
+    const weekEl = document.getElementById('selectWeek');
+    if (monthEl && weekEl && monthEl.value && weekEl.value) {
+        currentFullPeriod = `${monthEl.value}-${weekEl.value}`;
+    }
+
     const month = currentFullPeriod.substring(0, 7);
     const week = currentFullPeriod.substring(8);
     const range = getWeekRange(month, week);
@@ -534,10 +540,13 @@ function rebuildAndRenderReport(renderFullTable = true) {
                 const p = `${month}-${w}`;
                 const wRange = getWeekRange(month, w);
                 
-                const overrides = manualOverrides.filter(o => o.zona === zone && o.periodo === p);
+                const overrides = manualOverrides.filter(o => 
+                    o.zona && o.zona.trim().toUpperCase() === zone.trim().toUpperCase() && 
+                    o.periodo === p
+                );
                 const getManual = (campo) => {
                     const matches = overrides.filter(o => o.campo === campo);
-                    return matches.length > 0 ? matches[matches.length - 1].valor : undefined;
+                    return matches.length > 0 ? parseFloat(matches[matches.length - 1].valor) : undefined;
                 };
 
                 reportData[zone].presupuesto += getManual('budget') ?? 0;
@@ -549,17 +558,26 @@ function rebuildAndRenderReport(renderFullTable = true) {
                 const regTotals = getRegistroLeadsTotalsForZone(zone, p);
                 const wDefaultViables = wLeads.filter(l => ['DISPERSADO', 'EN PROCESO', 'CITA'].includes(l.etapa)).length;
 
-                reportData[zone].leads += getManual('leads') ?? (regTotals.hasData ? regTotals.totalLeads : wLeads.length);
-                reportData[zone].viables += getManual('viables') ?? (regTotals.hasData ? regTotals.totalViables : wDefaultViables);
+                const manualL = getManual('leads');
+                const manualV = getManual('viables');
+
+                const wLeadsVal = (manualL !== undefined && !isNaN(manualL)) ? manualL : (regTotals.hasData ? regTotals.totalLeads : wLeads.length);
+                const wViablesVal = (manualV !== undefined && !isNaN(manualV)) ? manualV : (regTotals.hasData ? regTotals.totalViables : wDefaultViables);
+
+                reportData[zone].leads += wLeadsVal;
+                reportData[zone].viables += wViablesVal;
                 reportData[zone].citas += getManual('citas') ?? wLeads.filter(l => l.etapa === 'CITA').length;
                 reportData[zone].disp_count += getManual('disp_count') ?? wDisps.length;
                 reportData[zone].dispersado += getManual('dispersado') ?? wDisps.reduce((acc, d) => acc + (parseFloat(d.monto) || 0), 0);
             });
         } else {
-            const overrides = manualOverrides.filter(o => o.zona === zone && o.periodo === currentFullPeriod);
+            const overrides = manualOverrides.filter(o => 
+                o.zona && o.zona.trim().toUpperCase() === zone.trim().toUpperCase() && 
+                o.periodo === currentFullPeriod
+            );
             const getManual = (campo) => {
                 const matches = overrides.filter(o => o.campo === campo);
-                return matches.length > 0 ? matches[matches.length - 1].valor : undefined;
+                return matches.length > 0 ? parseFloat(matches[matches.length - 1].valor) : undefined;
             };
 
             const zLeads = leads.filter(l => l.sucursal && zoneMapping[zone].includes(l.sucursal));
@@ -568,11 +586,22 @@ function rebuildAndRenderReport(renderFullTable = true) {
             const regTotals = getRegistroLeadsTotalsForZone(zone, currentFullPeriod);
             const defaultViables = zLeads.filter(l => ['DISPERSADO', 'EN PROCESO', 'CITA'].includes(l.etapa)).length;
 
+            const manualL = getManual('leads');
+            const manualV = getManual('viables');
+
+            const finalLeads = (manualL !== undefined && !isNaN(manualL)) 
+                ? manualL 
+                : (regTotals.hasData ? regTotals.totalLeads : zLeads.length);
+
+            const finalViables = (manualV !== undefined && !isNaN(manualV)) 
+                ? manualV 
+                : (regTotals.hasData ? regTotals.totalViables : defaultViables);
+
             reportData[zone] = {
                 presupuesto: getManual('budget') ?? 0,
                 atendidas: getManual('atendidas') ?? 0,
-                leads: getManual('leads') ?? (regTotals.hasData ? regTotals.totalLeads : zLeads.length),
-                viables: getManual('viables') ?? (regTotals.hasData ? regTotals.totalViables : defaultViables),
+                leads: finalLeads,
+                viables: finalViables,
                 citas: getManual('citas') ?? zLeads.filter(l => l.etapa === 'CITA').length,
                 disp_count: getManual('disp_count') ?? zDisps.length,
                 dispersado: getManual('dispersado') ?? zDisps.reduce((acc, d) => acc + (parseFloat(d.monto) || 0), 0)
