@@ -444,7 +444,7 @@ async function fetchManualReportData() {
     const { data, error } = await supabaseClient.from('reporte_datos').select('*');
     if (error) {
         console.error('Error fetching manual overrides:', error);
-        return [];
+        return null;
     }
     return data || [];
 }
@@ -475,30 +475,27 @@ async function generateReport() {
     lastReportLeads = leads || [];
     lastReportDispersiones = dispersiones || [];
     
-    const dbOverrides = await fetchManualReportData();
-    const merged = [...dbOverrides];
-    manualOverrides.forEach(localItem => {
-        const idx = merged.findIndex(m => m.zona === localItem.zona && m.campo === localItem.campo && m.periodo === localItem.periodo);
-        if (idx >= 0) {
-            merged[idx] = localItem;
-        } else {
-            merged.push(localItem);
-        }
-    });
-    manualOverrides = merged;
+    const dbData = await fetchManualReportData();
+    if (dbData !== null) {
+        manualOverrides = dbData;
+    }
 
     rebuildAndRenderReport(true);
 }
 
 function getRegistroLeadsTotalsForZone(zone, period) {
-    const sucursales = zoneMapping[zone] || [];
+    const sucursales = (zoneMapping[zone] || []).map(s => s.trim().toUpperCase());
     let totalLeads = 0;
     let totalViables = 0;
     let hasData = false;
 
     sucursales.forEach(suc => {
         const getVal = (campo) => {
-            const matches = manualOverrides.filter(d => d.zona === suc && d.periodo === period && d.campo === campo);
+            const matches = manualOverrides.filter(d => 
+                d.zona && d.zona.trim().toUpperCase() === suc && 
+                d.periodo === period && 
+                d.campo === campo
+            );
             return matches.length > 0 ? (parseFloat(matches[matches.length - 1].valor) || 0) : 0;
         };
 
@@ -1043,13 +1040,17 @@ function renderRegistroLeadsTable(manualData, month) {
 async function saveRegistroLeadData(sucursal, campo, value, periodo) {
     const val = parseInt(value) || 0;
 
+    manualOverrides = manualOverrides.filter(o => !(o.zona === sucursal && o.campo === campo && o.periodo === periodo));
+    manualOverrides.push({ zona: sucursal, campo: campo, valor: val, periodo: periodo });
+
     const error = await safeUpsertReporteDatos(sucursal, campo, val, periodo);
 
     if (error) {
         console.error('Error saving registro data:', error);
         triggerNotification('Error', 'No se pudo guardar el dato', 'warning');
     } else {
-        updateRegistroLeadsView(); // Refresh table totals
+        updateRegistroLeadsView();
+        rebuildAndRenderReport(false);
     }
 }
 
