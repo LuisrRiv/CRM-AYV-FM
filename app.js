@@ -2459,18 +2459,18 @@ const allowedUsers = [
     { user: 'maggie', pass: 'Maggie123', initials: 'MA', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'citasSucursal', 'reportes', 'registroLeads', 'demeritos', 'dispersiones'] },
     
     // Encargados de Sucursal (Acceso exclusivo a Citas y Retroalimentación de su Sucursal)
-    { user: 'encargado.xalapa20nov', pass: 'Xalapa20Nov!', initials: 'EX', sucursal: 'XALAPA 20 NOV', role: 'encargado', panels: ['citasSucursal'], phone: '' },
-    { user: 'encargado.araucarias', pass: 'Araucarias123!', initials: 'EA', sucursal: 'XALAPA ARAUCARIAS', role: 'encargado', panels: ['citasSucursal'], phone: '' },
-    { user: 'encargado.veracruz', pass: 'Veracruz123!', initials: 'EV', sucursal: 'VERACRUZ', role: 'encargado', panels: ['citasSucursal'], phone: '' },
-    { user: 'encargado.zapopan', pass: 'Zapopan123!', initials: 'EZ', sucursal: 'ZAPOPAN', role: 'encargado', panels: ['citasSucursal'], phone: '' },
+    { user: 'encargado.xalapa20nov', pass: 'Xalapa20Nov!', initials: 'EX', sucursal: 'XALAPA 20 NOV', role: 'encargado', panels: ['citasSucursal'], phone: '2282881468' },
+    { user: 'encargado.araucarias', pass: 'Araucarias123!', initials: 'EA', sucursal: 'XALAPA ARAUCARIAS', role: 'encargado', panels: ['citasSucursal'], phone: '2285012756' },
+    { user: 'encargado.veracruz', pass: 'Veracruz123!', initials: 'EV', sucursal: 'VERACRUZ', role: 'encargado', panels: ['citasSucursal'], phone: '2291358274' },
+    { user: 'encargado.zapopan', pass: 'Zapopan123!', initials: 'EZ', sucursal: 'ZAPOPAN', role: 'encargado', panels: ['citasSucursal'], phone: '3324332155' },
     { user: 'encargado.mtycentro', pass: 'MtyCentro123!', initials: 'EM', sucursal: 'MONTERREY CENTRO', role: 'encargado', panels: ['citasSucursal'], phone: '' },
-    { user: 'encargado.mtyterranova', pass: 'MtyTerra123!', initials: 'ET', sucursal: 'MONTERREY TERRANOVA', role: 'encargado', panels: ['citasSucursal'], phone: '' },
-    { user: 'encargado.mtymovil', pass: 'MtyMovil123!', initials: 'MM', sucursal: 'MONTERREY MOVIL', role: 'encargado', panels: ['citasSucursal'], phone: '' },
-    { user: 'encargado.pueblaanzures', pass: 'PueblaAnz123!', initials: 'PA', sucursal: 'PUEBLA ANZURES', role: 'encargado', panels: ['citasSucursal'], phone: '' },
-    { user: 'encargado.cholula', pass: 'Cholula123!', initials: 'PC', sucursal: 'PUEBLA CHOLULA', role: 'encargado', panels: ['citasSucursal'], phone: '' },
-    { user: 'encargado.queretaro', pass: 'Queretaro123!', initials: 'EQ', sucursal: 'QUERETARO', role: 'encargado', panels: ['citasSucursal'], phone: '' },
-    { user: 'encargado.qromovil', pass: 'QroMovil123!', initials: 'QM', sucursal: 'QUERETARO MOVIL', role: 'encargado', panels: ['citasSucursal'], phone: '' },
-    { user: 'encargado.gdlmovil', pass: 'GdlMovil123!', initials: 'GM', sucursal: 'GUADALAJARA MOVIL', role: 'encargado', panels: ['citasSucursal'], phone: '' }
+    { user: 'encargado.mtyterranova', pass: 'MtyTerra123!', initials: 'ET', sucursal: 'MONTERREY TERRANOVA', role: 'encargado', panels: ['citasSucursal'], phone: '8124375296' },
+    { user: 'encargado.mtymovil', pass: 'MtyMovil123!', initials: 'MM', sucursal: 'MONTERREY MOVIL', role: 'encargado', panels: ['citasSucursal'], phone: '8113834504' },
+    { user: 'encargado.pueblaanzures', pass: 'PueblaAnz123!', initials: 'PA', sucursal: 'PUEBLA ANZURES', role: 'encargado', panels: ['citasSucursal'], phone: '2223677074' },
+    { user: 'encargado.cholula', pass: 'Cholula123!', initials: 'PC', sucursal: 'PUEBLA CHOLULA', role: 'encargado', panels: ['citasSucursal'], phone: '2202764735' },
+    { user: 'encargado.queretaro', pass: 'Queretaro123!', initials: 'EQ', sucursal: 'QUERETARO', role: 'encargado', panels: ['citasSucursal'], phone: '4427509503' },
+    { user: 'encargado.qromovil', pass: 'QroMovil123!', initials: 'QM', sucursal: 'QUERETARO MOVIL', role: 'encargado', panels: ['citasSucursal'], phone: '4427509503' },
+    { user: 'encargado.gdlmovil', pass: 'GdlMovil123!', initials: 'GM', sucursal: 'GUADALAJARA MOVIL', role: 'encargado', panels: ['citasSucursal'], phone: '3339569157' }
 ];
 
 function isReadOnlyUser() {
