@@ -1223,13 +1223,29 @@ function openNewLeadPanel() {
 
 function openLeadPanel(id, name, stage, sucursal, vehiculo, numero, obs, obsEncargado, fechaCita) {
     currentLeadId = id;
+    
+    // Si se abrió desde notificación o buscador con solo el ID, buscar los datos en leads
+    if ((name === undefined || name === null || name === '') && typeof leads !== 'undefined' && leads && leads.length > 0) {
+        const found = leads.find(l => l.id === id);
+        if (found) {
+            name = found.nombre || '';
+            stage = found.etapa || '';
+            sucursal = found.sucursal || '';
+            vehiculo = found.vehiculo || '';
+            numero = found.numero || '';
+            obs = found.observaciones || '';
+            obsEncargado = found.obs_encargado || '';
+            fechaCita = found.fecha_cita || '';
+        }
+    }
+
     document.getElementById('panelTitle').innerText = "Detalles del Lead";
-    document.getElementById('panelLeadNameInput').value = name;
-    document.getElementById('panelLeadStage').value = stage;
-    document.getElementById('panelLeadSucursal').value = sucursal;
-    document.getElementById('panelLeadVehiculo').value = vehiculo;
-    document.getElementById('panelLeadNumero').value = numero;
-    document.getElementById('panelLeadObs').value = obs;
+    document.getElementById('panelLeadNameInput').value = name || '';
+    document.getElementById('panelLeadStage').value = stage || 'CITA';
+    document.getElementById('panelLeadSucursal').value = sucursal || '';
+    document.getElementById('panelLeadVehiculo').value = vehiculo || '';
+    document.getElementById('panelLeadNumero').value = numero || '';
+    document.getElementById('panelLeadObs').value = obs || '';
     document.getElementById('panelLeadObsEncargado').value = obsEncargado || "";
 
     // Formatear fecha para input datetime-local (requiere YYYY-MM-DDTHH:mm)
@@ -1271,12 +1287,12 @@ function closeLeadPanel() {
 }
 
 async function saveLead() {
-    const name = document.getElementById('panelLeadNameInput').value;
+    const name = document.getElementById('panelLeadNameInput').value.trim();
     const stage = document.getElementById('panelLeadStage').value;
     const sucursal = document.getElementById('panelLeadSucursal').value;
-    const vehiculo = document.getElementById('panelLeadVehiculo').value;
-    const numero = document.getElementById('panelLeadNumero').value;
-    const obs = document.getElementById('panelLeadObs').value;
+    const vehiculo = document.getElementById('panelLeadVehiculo').value.trim();
+    const numero = document.getElementById('panelLeadNumero').value.trim();
+    const obs = document.getElementById('panelLeadObs').value.trim();
     const fechaCita = document.getElementById('panelLeadFechaCita').value;
 
     if(!name) {
@@ -1294,7 +1310,6 @@ async function saveLead() {
         numero: numero,
         observaciones: obs,
         obs_encargado: document.getElementById('panelLeadObsEncargado').value,
-        creado_por: currentUser,
         fecha_cita: fechaCita || null
     };
 
@@ -1306,9 +1321,11 @@ async function saveLead() {
                 notifyEncargadoNuevaCita(leadData, false);
             }
         } else {
-            triggerNotification('Error', 'No se pudo actualizar el lead', 'warning');
+            console.error('Error actualizando lead:', error);
+            triggerNotification('Error', 'No se pudo actualizar el lead: ' + (error.message || ''), 'warning');
         }
     } else {
+        leadData.creado_por = currentUser;
         const { error, data } = await supabaseClient.from('leads').insert([leadData]).select();
         if(!error) {
             triggerNotification('Éxito', 'Nuevo lead creado', 'success');
@@ -1317,7 +1334,8 @@ async function saveLead() {
                 notifyEncargadoNuevaCita(createdRecord, true);
             }
         } else {
-            triggerNotification('Error', 'No se pudo crear el lead', 'warning');
+            console.error('Error creando lead:', error);
+            triggerNotification('Error', 'No se pudo crear el lead: ' + (error.message || ''), 'warning');
         }
     }
     
@@ -3115,7 +3133,7 @@ async function updateAsistencia(leadId, nuevaEtapa) {
     try {
         const { error } = await supabaseClient
             .from('leads')
-            .update({ etapa: nuevaEtapa, updated_at: new Date().toISOString() })
+            .update({ etapa: nuevaEtapa })
             .eq('id', leadId);
 
         if (error) throw error;
@@ -4685,7 +4703,7 @@ async function updateAsistencia(leadId, nuevaEtapa) {
     try {
         const { error } = await supabaseClient
             .from('leads')
-            .update({ etapa: nuevaEtapa, updated_at: new Date().toISOString() })
+            .update({ etapa: nuevaEtapa })
             .eq('id', leadId);
 
         if (error) throw error;
@@ -5066,7 +5084,7 @@ async function renderCalendar() {
             // Actualizar en base de datos Supabase
             const { error } = await supabaseClient
                 .from('leads')
-                .update({ fecha_cita: newFechaStr, updated_at: new Date().toISOString() })
+                .update({ fecha_cita: newFechaStr })
                 .eq('id', lead.id);
 
             if (error) {
@@ -5848,8 +5866,7 @@ async function quickActionCita(leadId, accion) {
             .from('leads')
             .update({
                 etapa: nuevaEtapa,
-                obs_encargado: obsText,
-                updated_at: new Date().toISOString()
+                obs_encargado: obsText
             })
             .eq('id', leadId)
             .select();
@@ -5990,8 +6007,7 @@ async function saveCitaRetroalimentacion() {
 
     const updatePayload = {
         etapa: nuevaEtapa,
-        obs_encargado: obsFinal,
-        updated_at: new Date().toISOString()
+        obs_encargado: obsFinal
     };
 
     if (accion === 'REAGENDO' && nuevaFecha) {
