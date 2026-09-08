@@ -1300,15 +1300,29 @@ async function saveLead() {
 
     if (currentLeadId) {
         const { error } = await supabaseClient.from('leads').update(leadData).eq('id', currentLeadId);
-        if(!error) triggerNotification('Éxito', 'Lead actualizado correctamente', 'success');
-        else triggerNotification('Error', 'No se pudo actualizar el lead', 'warning');
+        if(!error) {
+            triggerNotification('Éxito', 'Lead actualizado correctamente', 'success');
+            if ((leadData.etapa === 'CITA' || leadData.fecha_cita) && typeof notifyEncargadoNuevaCita === 'function') {
+                notifyEncargadoNuevaCita(leadData, false);
+            }
+        } else {
+            triggerNotification('Error', 'No se pudo actualizar el lead', 'warning');
+        }
     } else {
-        const { error } = await supabaseClient.from('leads').insert([leadData]);
-        if(!error) triggerNotification('Éxito', 'Nuevo lead creado', 'success');
-        else triggerNotification('Error', 'No se pudo crear el lead', 'warning');
+        const { error, data } = await supabaseClient.from('leads').insert([leadData]).select();
+        if(!error) {
+            triggerNotification('Éxito', 'Nuevo lead creado', 'success');
+            const createdRecord = (data && data[0]) ? data[0] : leadData;
+            if ((leadData.etapa === 'CITA' || leadData.fecha_cita) && typeof notifyEncargadoNuevaCita === 'function') {
+                notifyEncargadoNuevaCita(createdRecord, true);
+            }
+        } else {
+            triggerNotification('Error', 'No se pudo crear el lead', 'warning');
+        }
     }
     
     await fetchLeads();
+    if (typeof renderCitasSucursalView === 'function') renderCitasSucursalView();
     closeLeadPanel();
 }
 
@@ -2420,6 +2434,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         setupChatRealtime();
         setupReportRealtime();
         if(typeof setupLlamadasRealtime === 'function') setupLlamadasRealtime();
+        if(typeof setupCitasRealtimeListeners === 'function') setupCitasRealtimeListeners();
+        if(typeof renderCitasSucursalView === 'function') await renderCitasSucursalView();
+        if(typeof loadStoredNotifications === 'function') loadStoredNotifications();
         requestNotificationPermission();
     }
 });
@@ -2428,18 +2445,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Authentication Logic
 // ==========================================
 const allowedUsers = [
-    { user: 'adminlr', pass: 'AdminLR123', initials: 'AD', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
-    { user: 'jorge anzures', pass: 'Jorge123', initials: 'JA', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
-    { user: 'jorge', pass: 'Jorge123', initials: 'JA', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
-    { user: 'franco lozada', pass: 'Franco123', initials: 'FL', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
+    { user: 'adminlr', pass: 'AdminLR123', initials: 'AD', role: 'admin', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'citasSucursal', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
+    { user: 'jorge anzures', pass: 'Jorge123', initials: 'JA', role: 'admin', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'citasSucursal', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
+    { user: 'jorge', pass: 'Jorge123', initials: 'JA', role: 'admin', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'citasSucursal', 'kanban', 'assets', 'dispersiones', 'chat', 'reportes', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
+    { user: 'franco lozada', pass: 'Franco123', initials: 'FL', role: 'agente', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'citasSucursal', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
     { user: 'fabiola mendoza', pass: 'Fabiola123', initials: 'FM', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas'], readOnly: true },
     { user: 'fatima morales', pass: 'Fatima123', initials: 'FT', panels: ['kanban', 'leads', 'agendaManana', 'calendario', 'assets', 'chat'], readOnly: true },
-    { user: 'marcela ramirez', pass: 'Marcela123', initials: 'MR', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
-    { user: 'martin orduña', pass: 'Martin123', initials: 'MO', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
+    { user: 'marcela ramirez', pass: 'Marcela123', initials: 'MR', role: 'agente', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'citasSucursal', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
+    { user: 'martin orduña', pass: 'Martin123', initials: 'MO', role: 'agente', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'citasSucursal', 'kanban', 'assets', 'dispersiones', 'chat', 'registroLeads', 'llamadas', 'demeritos', 'demeritosComerciales'] },
     { user: 'invitado', pass: 'invitado123', initials: 'IN', panels: ['dashboard', 'calendario', 'reportes'], readOnly: true },
     { user: 'daniel molano', pass: 'Daniel123', initials: 'DM', panels: ['dashboard', 'calendario', 'reportes', 'dispersiones', 'demeritosComerciales'] },
-    { user: 'beto', pass: 'Beto123', initials: 'BE', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'reportes', 'registroLeads', 'demeritos'] },
-    { user: 'maggie', pass: 'Maggie123', initials: 'MA', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'reportes', 'registroLeads', 'demeritos', 'dispersiones'] }
+    { user: 'beto', pass: 'Beto123', initials: 'BE', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'citasSucursal', 'reportes', 'registroLeads', 'demeritos'] },
+    { user: 'maggie', pass: 'Maggie123', initials: 'MA', panels: ['dashboard', 'leads', 'agendaManana', 'calendario', 'citasSucursal', 'reportes', 'registroLeads', 'demeritos', 'dispersiones'] },
+    
+    // Encargados de Sucursal (Acceso exclusivo a Citas y Retroalimentación de su Sucursal)
+    { user: 'encargado.xalapa20nov', pass: 'Xalapa20Nov!', initials: 'EX', sucursal: 'XALAPA 20 NOV', role: 'encargado', panels: ['citasSucursal'], phone: '' },
+    { user: 'encargado.araucarias', pass: 'Araucarias123!', initials: 'EA', sucursal: 'XALAPA ARAUCARIAS', role: 'encargado', panels: ['citasSucursal'], phone: '' },
+    { user: 'encargado.veracruz', pass: 'Veracruz123!', initials: 'EV', sucursal: 'VERACRUZ', role: 'encargado', panels: ['citasSucursal'], phone: '' },
+    { user: 'encargado.zapopan', pass: 'Zapopan123!', initials: 'EZ', sucursal: 'ZAPOPAN', role: 'encargado', panels: ['citasSucursal'], phone: '' },
+    { user: 'encargado.mtycentro', pass: 'MtyCentro123!', initials: 'EM', sucursal: 'MONTERREY CENTRO', role: 'encargado', panels: ['citasSucursal'], phone: '' },
+    { user: 'encargado.mtyterranova', pass: 'MtyTerra123!', initials: 'ET', sucursal: 'MONTERREY TERRANOVA', role: 'encargado', panels: ['citasSucursal'], phone: '' },
+    { user: 'encargado.mtymovil', pass: 'MtyMovil123!', initials: 'MM', sucursal: 'MONTERREY MOVIL', role: 'encargado', panels: ['citasSucursal'], phone: '' },
+    { user: 'encargado.pueblaanzures', pass: 'PueblaAnz123!', initials: 'PA', sucursal: 'PUEBLA ANZURES', role: 'encargado', panels: ['citasSucursal'], phone: '' },
+    { user: 'encargado.cholula', pass: 'Cholula123!', initials: 'PC', sucursal: 'PUEBLA CHOLULA', role: 'encargado', panels: ['citasSucursal'], phone: '' },
+    { user: 'encargado.queretaro', pass: 'Queretaro123!', initials: 'EQ', sucursal: 'QUERETARO', role: 'encargado', panels: ['citasSucursal'], phone: '' },
+    { user: 'encargado.qromovil', pass: 'QroMovil123!', initials: 'QM', sucursal: 'QUERETARO MOVIL', role: 'encargado', panels: ['citasSucursal'], phone: '' },
+    { user: 'encargado.gdlmovil', pass: 'GdlMovil123!', initials: 'GM', sucursal: 'GUADALAJARA MOVIL', role: 'encargado', panels: ['citasSucursal'], phone: '' }
 ];
 
 function isReadOnlyUser() {
@@ -2502,6 +2533,8 @@ function switchView(targetId) {
             // Forzar recarga de leads frescos desde Supabase antes de renderizar el calendario
             if (typeof fetchLeads === 'function') await fetchLeads();
             if (typeof renderCalendar === 'function') renderCalendar();
+        } else if (targetId === 'citasSucursal') {
+            if (typeof renderCitasSucursalView === 'function') await renderCitasSucursalView();
         }
     }, 50);
 }
@@ -2540,6 +2573,34 @@ function applyPermissions(user) {
         }
     } else {
         if (styleEl) styleEl.remove();
+    }
+
+    // Configuración de contexto de sucursal para encargados vs admin/agentes
+    const branchFilter = document.getElementById('sucursalViewBranchFilter');
+    const branchBadge = document.getElementById('sucursalActiveBadge');
+    const branchContainer = document.getElementById('branchSelectorContainer');
+    
+    if (user.role === 'encargado' && user.sucursal) {
+        if (branchFilter) {
+            branchFilter.value = user.sucursal;
+            branchFilter.disabled = true;
+        }
+        if (branchContainer) branchContainer.style.display = 'none';
+        if (branchBadge) {
+            branchBadge.innerText = 'Sucursal: ' + user.sucursal;
+            branchBadge.style.background = 'rgba(34, 197, 94, 0.15)';
+            branchBadge.style.borderColor = '#22c55e';
+            branchBadge.style.color = '#22c55e';
+        }
+    } else {
+        if (branchFilter) branchFilter.disabled = false;
+        if (branchContainer) branchContainer.style.display = 'flex';
+        if (branchBadge) {
+            branchBadge.innerText = 'Sucursal: ' + (branchFilter && branchFilter.value !== 'all' ? branchFilter.value : 'Todas');
+            branchBadge.style.background = 'rgba(99, 102, 241, 0.15)';
+            branchBadge.style.borderColor = 'var(--accent-primary)';
+            branchBadge.style.color = 'var(--accent-primary)';
+        }
     }
     
     // Switch to first allowed view
@@ -2592,6 +2653,9 @@ function attemptLogin() {
             setupChatRealtime();
             if (typeof setupReportRealtime === 'function') setupReportRealtime();
             if (typeof setupLlamadasRealtime === 'function') setupLlamadasRealtime();
+            if (typeof setupCitasRealtimeListeners === 'function') setupCitasRealtimeListeners();
+            if (typeof renderCitasSucursalView === 'function') await renderCitasSucursalView();
+            if (typeof loadStoredNotifications === 'function') loadStoredNotifications();
             requestNotificationPermission();
         }, 300);
         
@@ -5191,3 +5255,959 @@ function sendWhatsAppManual() {
     const link = getWhatsAppLink(phone, leadMock);
     window.open(link, '_blank');
 }
+
+// ==========================================================================
+// MÓDULO: CITAS DE SUCURSAL, NOTIFICACIONES VISUALES BIDIRECCIONALES Y WASAPI
+// ==========================================================================
+
+// --- 1. Generador de Audio para Notificaciones (Web Audio API) ---
+function playNotificationSound(type = 'alert') {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const now = ctx.currentTime;
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        if (type === 'alert') {
+            // Doble tono brillante para nueva cita entrante
+            osc1.type = 'sine';
+            osc2.type = 'triangle';
+            osc1.frequency.setValueAtTime(587.33, now); // D5
+            osc1.frequency.setValueAtTime(880.00, now + 0.14); // A5
+            osc2.frequency.setValueAtTime(440.00, now); // A4
+            osc2.frequency.setValueAtTime(659.25, now + 0.14); // E5
+        } else {
+            // Triple arpegio suave para retroalimentación recibida
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(523.25, now); // C5
+            osc1.frequency.setValueAtTime(659.25, now + 0.12); // E5
+            osc1.frequency.setValueAtTime(783.99, now + 0.24); // G5
+        }
+
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+
+        osc1.connect(gain);
+        if (type === 'alert') osc2.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc1.start(now);
+        if (type === 'alert') osc2.start(now);
+        osc1.stop(now + 0.45);
+        if (type === 'alert') osc2.stop(now + 0.45);
+    } catch(e) {
+        // En caso de restricciones del navegador con AudioContext no iniciado por gesto
+    }
+}
+
+// --- 2. Actionable Toasts con Botones Interactivos ---
+function triggerActionableNotification(title, message, options = {}) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    playNotificationSound(options.soundType || 'alert');
+
+    const toast = document.createElement('div');
+    toast.className = 'toast actionable-toast';
+
+    let icon = '<i class="fa-solid fa-calendar-check" style="color: var(--accent-primary)"></i>';
+    if(options.icon) icon = options.icon;
+
+    let actionsHtml = '';
+    if (options.actions && options.actions.length > 0) {
+        actionsHtml = `<div class="actionable-toast-actions">` +
+            options.actions.map(act => `
+                <button class="btn ${act.class || 'btn-outline'}" 
+                        style="padding: 0.25rem 0.6rem; font-size: 0.75rem; border-radius: 0.35rem; cursor: pointer;" 
+                        onclick="${act.onclick}">
+                    ${act.label}
+                </button>
+            `).join('') +
+        `</div>`;
+    }
+
+    toast.innerHTML = `
+        <div style="font-size: 1.5rem; display: flex; align-items: center;">${icon}</div>
+        <div style="flex: 1; min-width: 0;">
+            <h4 style="font-size: 0.875rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.15rem;">${title}</h4>
+            <p style="font-size: 0.775rem; color: var(--text-secondary); line-height: 1.35; word-break: break-word;">${message}</p>
+            ${actionsHtml}
+        </div>
+        <button style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 0.25rem; font-size: 0.9rem;" onclick="this.closest('.toast').remove()">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    `;
+
+    container.appendChild(toast);
+
+    if (Notification.permission === "granted") {
+        try {
+            new Notification(title, { body: message.replace(/<[^>]*>?/gm, ''), icon: 'logo.png' });
+        } catch(e) {}
+    }
+
+    // Auto eliminar a los 9 segundos
+    setTimeout(() => {
+        if (container.contains(toast)) {
+            toast.style.opacity = '0';
+            setTimeout(() => { if (container.contains(toast)) container.removeChild(toast); }, 300);
+        }
+    }, 9000);
+}
+
+// --- 3. Centro de Notificaciones Persistente ---
+let activeNotificationTab = 'todas';
+
+function getStoredNotifications() {
+    const currentUser = localStorage.getItem('crm-logged-in') || 'global';
+    try {
+        const data = localStorage.getItem('crm_notifs_' + currentUser);
+        return data ? JSON.parse(data) : [];
+    } catch(e) {
+        return [];
+    }
+}
+
+function saveStoredNotifications(notifs) {
+    const currentUser = localStorage.getItem('crm-logged-in') || 'global';
+    try {
+        localStorage.setItem('crm_notifs_' + currentUser, JSON.stringify(notifs.slice(0, 50))); // Máximo 50
+    } catch(e) {}
+}
+
+function addNotificationToCenter(notif) {
+    const notifs = getStoredNotifications();
+    const item = {
+        id: 'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        type: notif.type || 'GENERAL', // 'CITA_NUEVA', 'RETROALIMENTACION', 'GENERAL'
+        title: notif.title,
+        message: notif.message,
+        leadId: notif.leadId || null,
+        sucursal: notif.sucursal || '',
+        read: false,
+        timestamp: new Date().toISOString()
+    };
+    notifs.unshift(item);
+    saveStoredNotifications(notifs);
+    updateNotificationBadge();
+    renderNotificationList();
+}
+
+function loadStoredNotifications() {
+    updateNotificationBadge();
+    renderNotificationList();
+}
+
+function updateNotificationBadge() {
+    const notifs = getStoredNotifications();
+    const unreadCount = notifs.filter(n => !n.read).length;
+    const badge = document.getElementById('notificationBadge');
+    if (!badge) return;
+
+    if (unreadCount > 0) {
+        badge.innerText = unreadCount > 99 ? '99+' : unreadCount;
+        badge.style.display = 'inline-block';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function toggleNotificationDropdown() {
+    const dropdown = document.getElementById('notificationDropdown');
+    if (!dropdown) return;
+    const isOpen = dropdown.style.display === 'block';
+    dropdown.style.display = isOpen ? 'none' : 'block';
+    if (!isOpen) {
+        renderNotificationList();
+    }
+}
+
+function switchNotificationTab(tab) {
+    activeNotificationTab = tab;
+    document.querySelectorAll('.notification-tab').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-tab') === tab);
+    });
+    renderNotificationList();
+}
+
+function markAllNotificationsAsRead() {
+    const notifs = getStoredNotifications();
+    notifs.forEach(n => n.read = true);
+    saveStoredNotifications(notifs);
+    updateNotificationBadge();
+    renderNotificationList();
+    triggerNotification('Notificaciones', 'Todas las notificaciones marcadas como leídas', 'info');
+}
+
+function clearAllNotifications() {
+    const currentUser = localStorage.getItem('crm-logged-in') || 'global';
+    localStorage.removeItem('crm_notifs_' + currentUser);
+    updateNotificationBadge();
+    renderNotificationList();
+}
+
+function markNotificationRead(id) {
+    const notifs = getStoredNotifications();
+    const target = notifs.find(n => n.id === id);
+    if (target) {
+        target.read = true;
+        saveStoredNotifications(notifs);
+        updateNotificationBadge();
+        renderNotificationList();
+    }
+}
+
+function renderNotificationList() {
+    const container = document.getElementById('notificationListContainer');
+    if (!container) return;
+
+    const notifs = getStoredNotifications();
+    let filtered = notifs;
+
+    if (activeNotificationTab === 'citas') {
+        filtered = notifs.filter(n => n.type === 'CITA_NUEVA');
+    } else if (activeNotificationTab === 'retro') {
+        filtered = notifs.filter(n => n.type === 'RETROALIMENTACION');
+    }
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-secondary); font-size: 0.85rem;">
+                <i class="fa-regular fa-bell-slash" style="font-size: 1.75rem; margin-bottom: 0.5rem; opacity: 0.5; display: block;"></i>
+                No hay notificaciones ${activeNotificationTab !== 'todas' ? 'en esta categoría' : 'registradas'}
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = filtered.map(n => {
+        let iconHtml = '<div class="notification-item-icon" style="background: rgba(99,102,241,0.15); color: var(--accent-primary);"><i class="fa-solid fa-bell"></i></div>';
+        if (n.type === 'CITA_NUEVA') {
+            iconHtml = '<div class="notification-item-icon" style="background: rgba(245,158,11,0.15); color: #f59e0b;"><i class="fa-solid fa-calendar-day"></i></div>';
+        } else if (n.type === 'RETROALIMENTACION') {
+            iconHtml = '<div class="notification-item-icon" style="background: rgba(34,197,94,0.15); color: #22c55e;"><i class="fa-solid fa-clipboard-check"></i></div>';
+        }
+
+        const dateStr = n.timestamp ? new Date(n.timestamp).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) + ' · ' + new Date(n.timestamp).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) : '';
+
+        return `
+            <div class="notification-item ${!n.read ? 'unread' : ''}" onclick="onNotificationClick('${n.id}', '${n.leadId || ''}', '${n.type}')">
+                ${iconHtml}
+                <div class="notification-item-content">
+                    <div class="notification-item-title">${escapeHTML(n.title)}</div>
+                    <div class="notification-item-message">${escapeHTML(n.message)}</div>
+                    <div class="notification-item-time">${dateStr} ${n.sucursal ? '· ' + escapeHTML(n.sucursal) : ''}</div>
+                </div>
+                ${!n.read ? '<span style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent-primary); flex-shrink: 0; margin-top: 5px;"></span>' : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+function onNotificationClick(notifId, leadId, type) {
+    markNotificationRead(notifId);
+    const dropdown = document.getElementById('notificationDropdown');
+    if (dropdown) dropdown.style.display = 'none';
+
+    if (type === 'CITA_NUEVA') {
+        switchView('citasSucursal');
+        if (leadId) {
+            setTimeout(() => {
+                const card = document.getElementById('cita-card-' + leadId);
+                if (card) {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    card.style.outline = '2px solid var(--accent-primary)';
+                    setTimeout(() => { card.style.outline = 'none'; }, 2500);
+                }
+            }, 300);
+        }
+    } else if (leadId) {
+        if (typeof openLeadPanel === 'function') {
+            openLeadPanel(leadId);
+        }
+    }
+}
+
+// Cerrar dropdown al hacer click fuera
+document.addEventListener('click', (e) => {
+    const wrapper = document.getElementById('notificationCenterWrapper');
+    const dropdown = document.getElementById('notificationDropdown');
+    if (wrapper && dropdown && dropdown.style.display === 'block') {
+        if (!wrapper.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    }
+});
+
+// --- 4. Renderizado y Filtros de la Sección "Citas de Sucursal" ---
+let currentCitasSucursalFilter = 'all';
+
+function setSucursalCitaFilter(filter) {
+    currentCitasSucursalFilter = filter;
+    document.querySelectorAll('#citasFilterButtons button').forEach(b => {
+        b.classList.toggle('active-filter-btn', b.getAttribute('data-filter') === filter);
+    });
+    renderCitasSucursalView();
+}
+
+async function renderCitasSucursalView() {
+    const container = document.getElementById('citasCardsContainer');
+    if (!container) return;
+
+    // Determinar usuario actual y contexto de sucursal
+    const session = localStorage.getItem('crm-logged-in');
+    const currentUser = allowedUsers.find(u => u.user === session);
+    const branchFilterEl = document.getElementById('sucursalViewBranchFilter');
+    
+    let activeSucursal = 'all';
+    if (currentUser && currentUser.role === 'encargado' && currentUser.sucursal) {
+        activeSucursal = currentUser.sucursal;
+        if (branchFilterEl) branchFilterEl.value = activeSucursal;
+    } else if (branchFilterEl) {
+        activeSucursal = branchFilterEl.value;
+    }
+
+    const branchBadge = document.getElementById('sucursalActiveBadge');
+    if (branchBadge) {
+        branchBadge.innerText = 'Sucursal: ' + (activeSucursal === 'all' ? 'Todas' : activeSucursal);
+    }
+
+    container.innerHTML = `
+        <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+            <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; color: var(--accent-primary); margin-bottom: 0.75rem;"></i>
+            <p>Cargando citas de sucursal...</p>
+        </div>
+    `;
+
+    try {
+        // Consultar leads relevantes para citas
+        const { data: leadsData, error } = await supabaseClient
+            .from('leads')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Filtrar candidatos a citas: etapa 'CITA', o con fecha_cita, o que tengan retroalimentación registrada
+        let citas = leadsData.filter(l => {
+            if (!l) return false;
+            const esCita = l.etapa === 'CITA' || !!l.fecha_cita;
+            const tieneRetro = !!l.obs_encargado || ['NO ASISTIO', 'EN PROCESO'].includes(l.etapa);
+            return esCita || tieneRetro;
+        });
+
+        // Filtrar por sucursal seleccionada
+        if (activeSucursal !== 'all') {
+            citas = citas.filter(c => (c.sucursal || '').toUpperCase().trim() === activeSucursal.toUpperCase().trim());
+        }
+
+        // Búsqueda textual rápida
+        const searchInput = document.getElementById('sucursalCitasSearchInput');
+        const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        if (searchTerm) {
+            citas = citas.filter(c => 
+                (c.nombre && c.nombre.toLowerCase().includes(searchTerm)) ||
+                (c.vehiculo && c.vehiculo.toLowerCase().includes(searchTerm)) ||
+                (c.numero && c.numero.toLowerCase().includes(searchTerm)) ||
+                (c.creado_por && c.creado_por.toLowerCase().includes(searchTerm)) ||
+                (c.observaciones && c.observaciones.toLowerCase().includes(searchTerm)) ||
+                (c.obs_encargado && c.obs_encargado.toLowerCase().includes(searchTerm))
+            );
+        }
+
+        // Cálculo de KPIs
+        const todayStr = new Date().toISOString().split('T')[0];
+        let countHoy = 0;
+        let countPendientes = 0;
+        let countAsistidas = 0;
+        let countNegociacion = 0;
+        let countReagendadas = 0;
+
+        citas.forEach(c => {
+            const fechaCitaVal = c.fecha_cita ? c.fecha_cita.split('T')[0] : (c.created_at ? c.created_at.split('T')[0] : '');
+            if (fechaCitaVal === todayStr) countHoy++;
+
+            const obsEnc = (c.obs_encargado || '').toUpperCase();
+            if (c.etapa === 'CITA' && !c.obs_encargado) {
+                countPendientes++;
+            } else if (obsEnc.includes('ASISTI') || c.etapa === 'EN PROCESO') {
+                countAsistidas++;
+            }
+            if (obsEnc.includes('NEGOCIAC') || obsEnc.includes('NEGOCIACIÓN')) {
+                countNegociacion++;
+            }
+            if (obsEnc.includes('REAGEND')) {
+                countReagendadas++;
+            }
+        });
+
+        const kpiHoyEl = document.getElementById('kpiCitasHoy');
+        const kpiPendEl = document.getElementById('kpiCitasPendientes');
+        const kpiAsistEl = document.getElementById('kpiCitasAsistidas');
+        const kpiNegEl = document.getElementById('kpiCitasNegociacion');
+        const kpiReagEl = document.getElementById('kpiCitasReagendadas');
+
+        if (kpiHoyEl) kpiHoyEl.innerText = countHoy;
+        if (kpiPendEl) kpiPendEl.innerText = countPendientes;
+        if (kpiAsistEl) kpiAsistEl.innerText = countAsistidas;
+        if (kpiNegEl) kpiNegEl.innerText = countNegociacion;
+        if (kpiReagEl) kpiReagEl.innerText = countReagendadas;
+
+        // Filtrado según pestaña de filtro rápido
+        let filteredCitas = citas;
+        if (currentCitasSucursalFilter === 'hoy') {
+            filteredCitas = citas.filter(c => {
+                const f = c.fecha_cita ? c.fecha_cita.split('T')[0] : (c.created_at ? c.created_at.split('T')[0] : '');
+                return f === todayStr;
+            });
+        } else if (currentCitasSucursalFilter === 'pendientes') {
+            filteredCitas = citas.filter(c => c.etapa === 'CITA' && !c.obs_encargado);
+        } else if (currentCitasSucursalFilter === 'asistio') {
+            filteredCitas = citas.filter(c => (c.obs_encargado || '').toUpperCase().includes('ASISTI') || (c.etapa === 'EN PROCESO' && c.obs_encargado));
+        } else if (currentCitasSucursalFilter === 'no_asistio') {
+            filteredCitas = citas.filter(c => c.etapa === 'NO ASISTIO' || (c.obs_encargado || '').toUpperCase().includes('NO ASISTI'));
+        } else if (currentCitasSucursalFilter === 'negociacion') {
+            filteredCitas = citas.filter(c => (c.obs_encargado || '').toUpperCase().includes('NEGOCIAC'));
+        } else if (currentCitasSucursalFilter === 'reagendo') {
+            filteredCitas = citas.filter(c => (c.obs_encargado || '').toUpperCase().includes('REAGEND'));
+        }
+
+        if (filteredCitas.length === 0) {
+            container.innerHTML = `
+                <div style="background: var(--bg-panel); border: 1px dashed var(--border-color); border-radius: 0.85rem; padding: 3rem; text-align: center; color: var(--text-secondary);">
+                    <i class="fa-solid fa-calendar-xmark" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.4;"></i>
+                    <h3 style="font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.5rem;">No se encontraron citas</h3>
+                    <p style="font-size: 0.85rem;">No hay citas registradas que coincidan con la sucursal o los filtros seleccionados.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Renderizar Tarjetas
+        container.innerHTML = filteredCitas.map(lead => {
+            const obsEnc = (lead.obs_encargado || '').toUpperCase();
+            
+            // Determinación de estado visual
+            let statusClass = 'status-pendiente';
+            let statusLabel = '⏳ Pendiente de Retro';
+            let statusBadgeColor = 'var(--warning)';
+
+            if (obsEnc.includes('REAGEND')) {
+                statusClass = 'status-reagendo';
+                statusLabel = '🔄 Cita Reagendada';
+                statusBadgeColor = '#f59e0b';
+            } else if (obsEnc.includes('NEGOCIAC') || obsEnc.includes('NEGOCIACIÓN')) {
+                statusClass = 'status-negociacion';
+                statusLabel = '🤝 En Negociación';
+                statusBadgeColor = '#38bdf8';
+            } else if (lead.etapa === 'NO ASISTIO' || obsEnc.includes('NO ASISTI')) {
+                statusClass = 'status-no_asistio';
+                statusLabel = '❌ No Asistió';
+                statusBadgeColor = 'var(--danger)';
+            } else if (obsEnc.includes('ASISTI') || lead.etapa === 'EN PROCESO') {
+                statusClass = 'status-asistio';
+                statusLabel = '✅ Asistió';
+                statusBadgeColor = 'var(--success)';
+            }
+
+            // Formato de fecha de la cita
+            let fechaCitaDisplay = 'Sin fecha definida';
+            let timeBadgeHtml = '';
+            if (lead.fecha_cita) {
+                const dateObj = new Date(lead.fecha_cita);
+                const isToday = lead.fecha_cita.split('T')[0] === todayStr;
+                fechaCitaDisplay = dateObj.toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+                timeBadgeHtml = `<span class="cita-badge cita-badge-time"><i class="fa-solid fa-clock"></i> ${isToday ? '¡HOY! ' : ''}${fechaCitaDisplay}</span>`;
+            } else if (lead.created_at) {
+                const dateObj = new Date(lead.created_at);
+                fechaCitaDisplay = 'Agendado: ' + dateObj.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+                timeBadgeHtml = `<span class="cita-badge cita-badge-time"><i class="fa-solid fa-calendar"></i> ${fechaCitaDisplay}</span>`;
+            }
+
+            // Teléfono y enlaces directos
+            const rawPhone = (lead.numero || '').replace(/\D/g, '');
+            const phoneDisplay = lead.numero || 'Sin teléfono';
+            const waLink = rawPhone ? `https://wa.me/52${rawPhone.slice(-10)}` : '#';
+
+            return `
+                <div class="cita-card ${statusClass}" id="cita-card-${lead.id}">
+                    <div class="cita-card-header">
+                        <div>
+                            <div class="cita-card-title">
+                                <i class="fa-solid fa-user-tag" style="color: var(--accent-primary); font-size: 1rem;"></i>
+                                ${escapeHTML(lead.nombre || 'Sin Nombre')}
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; margin-top: 0.35rem; align-items: center; flex-wrap: wrap;">
+                                <span class="cita-badge cita-badge-branch"><i class="fa-solid fa-store"></i> ${escapeHTML(lead.sucursal || 'Sin Sucursal')}</span>
+                                ${timeBadgeHtml}
+                                <span class="cita-badge cita-badge-agent"><i class="fa-solid fa-headset"></i> Agente: <strong>${escapeHTML(lead.creado_por || 'Desconocido')}</strong></span>
+                            </div>
+                        </div>
+                        <span class="cita-badge" style="background: rgba(255,255,255,0.06); border: 1px solid ${statusBadgeColor}; color: ${statusBadgeColor}; font-size: 0.8rem; padding: 0.35rem 0.75rem;">
+                            ${statusLabel}
+                        </span>
+                    </div>
+
+                    <div class="cita-card-details">
+                        <div class="cita-detail-item">
+                            <i class="fa-solid fa-car" style="color: var(--accent-primary);"></i>
+                            <span>Vehículo: <strong>${escapeHTML(lead.vehiculo || 'No especificado')}</strong></span>
+                        </div>
+                        <div class="cita-detail-item">
+                            <i class="fa-solid fa-phone" style="color: var(--success);"></i>
+                            <span>Teléfono: <strong>${escapeHTML(phoneDisplay)}</strong></span>
+                            ${rawPhone ? `
+                                <a href="${waLink}" target="_blank" title="Abrir WhatsApp" style="color: #22c55e; margin-left: 0.35rem; font-size: 1rem;">
+                                    <i class="fa-brands fa-whatsapp"></i>
+                                </a>
+                                <a href="tel:${rawPhone}" title="Llamar" style="color: var(--accent-primary); margin-left: 0.35rem;">
+                                    <i class="fa-solid fa-phone-flip"></i>
+                                </a>
+                            ` : ''}
+                        </div>
+                        <div class="cita-detail-item" style="grid-column: 1 / -1;">
+                            <i class="fa-solid fa-comment-dots" style="color: var(--text-secondary);"></i>
+                            <span>Obs. del Agente: <em>${escapeHTML(lead.observaciones || 'Sin notas del agente')}</em></span>
+                        </div>
+                    </div>
+
+                    ${lead.obs_encargado ? `
+                        <div class="cita-feedback-preview">
+                            <strong style="color: var(--accent-primary);"><i class="fa-solid fa-clipboard-user"></i> Retroalimentación de Sucursal:</strong>
+                            <p style="margin-top: 0.25rem; color: var(--text-primary); line-height: 1.4;">${escapeHTML(lead.obs_encargado)}</p>
+                        </div>
+                    ` : ''}
+
+                    <div class="cita-actions-bar">
+                        <span style="font-size: 0.75rem; color: var(--text-secondary); margin-right: auto;">
+                            <i class="fa-solid fa-hand-pointer"></i> Acción rápida:
+                        </span>
+                        <button class="btn btn-action-asistio" onclick="quickActionCita('${lead.id}', 'ASISTIO')" title="Confirmar asistencia presencial">
+                            <i class="fa-solid fa-circle-check"></i> Asistió
+                        </button>
+                        <button class="btn btn-action-noasistio" onclick="quickActionCita('${lead.id}', 'NO_ASISTIO')" title="Marcar que el cliente no se presentó">
+                            <i class="fa-solid fa-circle-xmark"></i> No asistió
+                        </button>
+                        <button class="btn btn-action-reagendo" onclick="openRetroalimentacionModal('${lead.id}', 'REAGENDO')" title="Reprogramar fecha de la cita">
+                            <i class="fa-solid fa-calendar-plus"></i> Reagendó
+                        </button>
+                        <button class="btn btn-action-negociacion" onclick="quickActionCita('${lead.id}', 'NEGOCIACION')" title="Cliente en negociación o trámite">
+                            <i class="fa-solid fa-handshake"></i> Negociación
+                        </button>
+                        <button class="btn btn-action-comentarios" onclick="openRetroalimentacionModal('${lead.id}', 'COMENTARIOS')" title="Escribir retroalimentación detallada">
+                            <i class="fa-solid fa-comment-medical"></i> Comentarios
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+    } catch (err) {
+        console.error('Error renderCitasSucursalView:', err);
+        container.innerHTML = `
+            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); border-radius: 0.75rem; padding: 2rem; text-align: center; color: var(--danger);">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
+                <p>Ocurrió un error al cargar las citas de sucursal: ${err.message}</p>
+            </div>
+        `;
+    }
+}
+
+// --- 5. Acciones Rápidas y Modal de Retroalimentación ---
+let currentModalLead = null;
+
+async function quickActionCita(leadId, accion) {
+    const session = localStorage.getItem('crm-logged-in') || 'Encargado';
+    const timeStr = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+
+    let nuevaEtapa = 'EN PROCESO';
+    let mensajeConfirmacion = '';
+    let obsText = '';
+
+    if (accion === 'ASISTIO') {
+        nuevaEtapa = 'EN PROCESO';
+        mensajeConfirmacion = '¿Confirmas que el cliente ASISTIÓ a la sucursal?';
+        obsText = `[ASISTIÓ] Cliente presente en sucursal. Atendido por ${session} (${timeStr})`;
+    } else if (accion === 'NO_ASISTIO') {
+        nuevaEtapa = 'NO ASISTIO';
+        mensajeConfirmacion = '¿Confirmas marcar esta cita como NO ASISTIÓ?';
+        obsText = `[NO ASISTIÓ] Cliente no se presentó a la cita. Registrado por ${session} (${timeStr})`;
+    } else if (accion === 'NEGOCIACION') {
+        nuevaEtapa = 'EN PROCESO';
+        mensajeConfirmacion = '¿Marcar al cliente en etapa de NEGOCIACIÓN?';
+        obsText = `[EN NEGOCIACIÓN] Cliente en propuesta comercial / prueba de manejo. Atendido por ${session} (${timeStr})`;
+    }
+
+    if (!confirm(mensajeConfirmacion)) return;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('leads')
+            .update({
+                etapa: nuevaEtapa,
+                obs_encargado: obsText,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', leadId)
+            .select();
+
+        if (error) throw error;
+
+        triggerNotification('Retroalimentación Registrada', 'El estado de la cita fue actualizado con éxito.', 'success');
+        
+        // Refrescar vista
+        await renderCitasSucursalView();
+        if (typeof fetchLeads === 'function') fetchLeads();
+
+    } catch (err) {
+        console.error('Error quickActionCita:', err);
+        triggerNotification('Error', 'No se pudo guardar la acción: ' + err.message, 'warning');
+    }
+}
+
+async function openRetroalimentacionModal(leadId, defaultOption = 'ASISTIO') {
+    try {
+        const { data, error } = await supabaseClient
+            .from('leads')
+            .select('*')
+            .eq('id', leadId)
+            .single();
+
+        if (error || !data) {
+            triggerNotification('Error', 'No se pudo obtener la información de la cita.', 'warning');
+            return;
+        }
+
+        currentModalLead = data;
+        document.getElementById('retroLeadId').value = leadId;
+        document.getElementById('retroClienteNombre').innerText = data.nombre || 'Sin Nombre';
+        document.getElementById('retroSucursalTag').innerText = 'Sucursal: ' + (data.sucursal || 'Sin Sucursal');
+        document.getElementById('retroAgenteTag').innerText = 'Agente: ' + (data.creado_por || 'Desconocido');
+        document.getElementById('retroVehiculo').innerText = data.vehiculo || 'No especificado';
+        document.getElementById('retroTelefono').innerText = data.numero || 'Sin teléfono';
+        document.getElementById('retroObsAgenteTexto').innerText = data.observaciones || 'Sin observaciones previas del agente.';
+
+        // Cita Fecha display
+        let fText = 'Sin fecha';
+        if (data.fecha_cita) {
+            const d = new Date(data.fecha_cita);
+            fText = d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) + ' ' + d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('retroNuevaFechaInput').value = data.fecha_cita.slice(0, 16);
+        } else {
+            const now = new Date();
+            now.setHours(now.getHours() + 24);
+            document.getElementById('retroNuevaFechaInput').value = now.toISOString().slice(0, 16);
+        }
+        document.getElementById('retroFechaCita').innerText = fText;
+
+        // Comentarios existentes
+        document.getElementById('retroComentariosInput').value = data.obs_encargado || '';
+
+        // Seleccionar opción
+        selectRetroOption(defaultOption === 'COMENTARIOS' ? 'ASISTIO' : defaultOption);
+
+        const modal = document.getElementById('modalRetroalimentacionCita');
+        if (modal) modal.classList.add('open');
+
+    } catch (e) {
+        console.error('Error openRetroalimentacionModal:', e);
+    }
+}
+
+function closeRetroalimentacionModal() {
+    const modal = document.getElementById('modalRetroalimentacionCita');
+    if (modal) modal.classList.remove('open');
+    currentModalLead = null;
+}
+
+function selectRetroOption(option) {
+    document.getElementById('retroAccionSelected').value = option;
+    
+    // Resaltar visualmente el botón seleccionado
+    const buttons = {
+        'ASISTIO': document.getElementById('btnOptAsistio'),
+        'NO_ASISTIO': document.getElementById('btnOptNoAsistio'),
+        'REAGENDO': document.getElementById('btnOptReagendo'),
+        'NEGOCIACION': document.getElementById('btnOptNegociacion')
+    };
+
+    Object.keys(buttons).forEach(key => {
+        const btn = buttons[key];
+        if (!btn) return;
+        if (key === option) {
+            btn.style.boxShadow = '0 0 0 3px var(--accent-primary)';
+            btn.style.transform = 'scale(1.02)';
+        } else {
+            btn.style.boxShadow = 'none';
+            btn.style.transform = 'scale(1)';
+        }
+    });
+
+    // Mostrar / ocultar campo de nueva fecha si reagendó
+    const fechaGroup = document.getElementById('retroNuevaFechaGroup');
+    if (fechaGroup) {
+        fechaGroup.style.display = option === 'REAGENDO' ? 'block' : 'none';
+    }
+}
+
+function appendRetroTag(tagText) {
+    const txtArea = document.getElementById('retroComentariosInput');
+    if (!txtArea) return;
+    if (txtArea.value.trim() === '') {
+        txtArea.value = tagText;
+    } else {
+        txtArea.value += ', ' + tagText;
+    }
+    txtArea.focus();
+}
+
+async function saveCitaRetroalimentacion() {
+    const leadId = document.getElementById('retroLeadId').value;
+    const accion = document.getElementById('retroAccionSelected').value || 'ASISTIO';
+    const comentarios = document.getElementById('retroComentariosInput').value.trim();
+    const nuevaFecha = document.getElementById('retroNuevaFechaInput').value;
+    const session = localStorage.getItem('crm-logged-in') || 'Encargado';
+    const timeStr = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+
+    let nuevaEtapa = 'EN PROCESO';
+    let prefijo = '[ASISTIÓ]';
+
+    if (accion === 'NO_ASISTIO') {
+        nuevaEtapa = 'NO ASISTIO';
+        prefijo = '[NO ASISTIÓ]';
+    } else if (accion === 'REAGENDO') {
+        nuevaEtapa = 'CITA';
+        prefijo = '[REAGENDADA]';
+    } else if (accion === 'NEGOCIACION') {
+        nuevaEtapa = 'EN PROCESO';
+        prefijo = '[EN NEGOCIACIÓN]';
+    }
+
+    const obsFinal = `${prefijo} ${comentarios ? comentarios + ' — ' : ''}Atendido por ${session} (${timeStr})`;
+
+    const updatePayload = {
+        etapa: nuevaEtapa,
+        obs_encargado: obsFinal,
+        updated_at: new Date().toISOString()
+    };
+
+    if (accion === 'REAGENDO' && nuevaFecha) {
+        updatePayload.fecha_cita = nuevaFecha;
+    }
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('leads')
+            .update(updatePayload)
+            .eq('id', leadId)
+            .select();
+
+        if (error) throw error;
+
+        triggerNotification('Retroalimentación Enviada', 'Se guardó la información y se notificó en tiempo real al agente.', 'success');
+        closeRetroalimentacionModal();
+        await renderCitasSucursalView();
+        if (typeof fetchLeads === 'function') fetchLeads();
+
+    } catch (err) {
+        console.error('Error saveCitaRetroalimentacion:', err);
+        triggerNotification('Error', 'No se pudo guardar la retroalimentación: ' + err.message, 'warning');
+    }
+}
+
+// --- 6. Realtime Bidireccional de Citas y Retroalimentación ---
+let citasRealtimeChannel = null;
+
+function setupCitasRealtimeListeners() {
+    const session = localStorage.getItem('crm-logged-in');
+    if (!session) return;
+    const currentUser = allowedUsers.find(u => u.user === session);
+    if (!currentUser) return;
+
+    if (citasRealtimeChannel) {
+        citasRealtimeChannel.unsubscribe();
+    }
+
+    console.log('Inicializando canal Realtime de Citas y Retroalimentación para:', currentUser.user);
+
+    citasRealtimeChannel = supabaseClient
+        .channel('citas-bidireccional-channel')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, payload => {
+            handleCitasRealtimeEvent(payload, currentUser);
+        })
+        .subscribe();
+}
+
+function handleCitasRealtimeEvent(payload, currentUser) {
+    const newRecord = payload.new;
+    const oldRecord = payload.old;
+    if (!newRecord) return;
+
+    const sessionUser = currentUser.user;
+    const userRole = currentUser.role || '';
+    const userSucursal = (currentUser.sucursal || '').toUpperCase().trim();
+    const recordSucursal = (newRecord.sucursal || '').toUpperCase().trim();
+
+    // =========================================================================
+    // FLUJO 1: Agente Agendó Cita -> Notificar al Encargado de Sucursal
+    // =========================================================================
+    const esCita = newRecord.etapa === 'CITA' || !!newRecord.fecha_cita;
+    const recienAgendada = payload.eventType === 'INSERT' || (oldRecord && oldRecord.etapa !== 'CITA' && newRecord.etapa === 'CITA');
+
+    if (esCita && recienAgendada) {
+        // Solo notificar si el usuario logueado es encargado de esa sucursal o es admin (y no fue él quien la agendó)
+        const esParaMiSucursal = userRole === 'encargado' && userSucursal === recordSucursal;
+        const soyAdmin = userRole === 'admin';
+
+        if ((esParaMiSucursal || soyAdmin) && newRecord.creado_por !== sessionUser) {
+            const fechaStr = newRecord.fecha_cita ? new Date(newRecord.fecha_cita).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) + ' (' + new Date(newRecord.fecha_cita).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) + ')' : 'Por definir';
+
+            triggerActionableNotification(
+                `📅 ¡Nueva Cita para ${newRecord.sucursal}!`,
+                `<strong>Cliente:</strong> ${escapeHTML(newRecord.nombre)}<br><strong>Auto:</strong> ${escapeHTML(newRecord.vehiculo || 'No esp.')}<br><strong>Horario:</strong> ${fechaStr}<br><em>Agendó: ${escapeHTML(newRecord.creado_por || 'Agente')}</em>`,
+                {
+                    soundType: 'alert',
+                    icon: '<i class="fa-solid fa-calendar-plus" style="color: #f59e0b;"></i>',
+                    actions: [
+                        {
+                            label: '<i class="fa-solid fa-eye"></i> Atender Cita',
+                            class: 'btn-action-asistio',
+                            onclick: `switchView('citasSucursal'); this.closest('.toast').remove();`
+                        },
+                        {
+                            label: 'Cerrar',
+                            class: 'btn-outline',
+                            onclick: `this.closest('.toast').remove();`
+                        }
+                    ]
+                }
+            );
+
+            addNotificationToCenter({
+                type: 'CITA_NUEVA',
+                title: `Nueva Cita: ${newRecord.nombre}`,
+                message: `Agendada por ${newRecord.creado_por} para ${newRecord.sucursal} (${fechaStr}). Auto: ${newRecord.vehiculo || 'No esp.'}`,
+                leadId: newRecord.id,
+                sucursal: newRecord.sucursal
+            });
+
+            // Refrescar vista si está activa
+            const activeSec = document.querySelector('.view-section.active');
+            if (activeSec && activeSec.id === 'citasSucursal') {
+                renderCitasSucursalView();
+            }
+        }
+    }
+
+    // =========================================================================
+    // FLUJO 2: Encargado Retroalimentó Cita -> Notificar al Agente Creador
+    // =========================================================================
+    const tieneRetroNueva = payload.eventType === 'UPDATE' && newRecord.obs_encargado && (!oldRecord || oldRecord.obs_encargado !== newRecord.obs_encargado);
+
+    if (tieneRetroNueva) {
+        // Solo notificar si el usuario logueado es el agente creador del lead o admin
+        const soyCreador = newRecord.creado_por && newRecord.creado_por.toLowerCase().trim() === sessionUser.toLowerCase().trim();
+        const soyAdmin = userRole === 'admin';
+
+        if ((soyCreador || soyAdmin) && userRole !== 'encargado') {
+            triggerActionableNotification(
+                `📢 Retroalimentación Recibida: ${newRecord.nombre}`,
+                `<strong>Sucursal:</strong> ${escapeHTML(newRecord.sucursal)}<br><strong>Resultado:</strong> ${escapeHTML(newRecord.etapa)}<br><em>${escapeHTML(newRecord.obs_encargado)}</em>`,
+                {
+                    soundType: 'feedback',
+                    icon: '<i class="fa-solid fa-clipboard-check" style="color: var(--success)"></i>',
+                    actions: [
+                        {
+                            label: '<i class="fa-solid fa-folder-open"></i> Ver Lead',
+                            class: 'btn-action-comentarios',
+                            onclick: `if(typeof openLeadPanel === 'function') openLeadPanel('${newRecord.id}'); this.closest('.toast').remove();`
+                        },
+                        {
+                            label: 'Entendido',
+                            class: 'btn-outline',
+                            onclick: `this.closest('.toast').remove();`
+                        }
+                    ]
+                }
+            );
+
+            addNotificationToCenter({
+                type: 'RETROALIMENTACION',
+                title: `Retroalimentación: ${newRecord.nombre}`,
+                message: `Sucursal ${newRecord.sucursal}: ${newRecord.obs_encargado}`,
+                leadId: newRecord.id,
+                sucursal: newRecord.sucursal
+            });
+
+            // Refrescar vistas pertinentes
+            if (typeof fetchLeads === 'function') fetchLeads();
+            const activeSec = document.querySelector('.view-section.active');
+            if (activeSec && activeSec.id === 'citasSucursal') {
+                renderCitasSucursalView();
+            }
+        }
+    }
+}
+
+// --- 7. Disparo de Notificación por WhatsApp vía Wasapi al Encargado ---
+async function notifyEncargadoNuevaCita(lead, isNew = true) {
+    if (!lead || !lead.sucursal) return;
+
+    // Buscar si el encargado de esa sucursal tiene teléfono configurado
+    const encargadoUser = allowedUsers.find(u => 
+        u.role === 'encargado' && 
+        (u.sucursal || '').toUpperCase().trim() === (lead.sucursal || '').toUpperCase().trim()
+    );
+
+    const targetPhone = encargadoUser ? encargadoUser.phone : null;
+
+    // Formatear mensaje para el encargado
+    let fechaStr = 'Por coordinar';
+    if (lead.fecha_cita) {
+        const d = new Date(lead.fecha_cita);
+        fechaStr = d.toLocaleDateString('es-MX', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }) + ' a las ' + d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    const waMessage = 
+`🔔 *NUEVA CITA AGENDADA EN TU SUCURSAL*
+Hola Encargado(a),
+El agente *${lead.creado_por || 'Comercial'}* acaba de agendar una nueva cita para tu sede:
+
+📍 *Sucursal:* ${lead.sucursal}
+👤 *Cliente:* ${lead.nombre || 'No especificado'}
+📱 *Teléfono Cliente:* ${lead.numero || 'No disponible'}
+🚗 *Vehículo:* ${lead.vehiculo || 'No especificado'}
+📅 *Fecha y Hora:* ${fechaStr}
+📝 *Observaciones:* ${lead.observaciones || 'Ninguna'}
+
+_Por favor mantente atento para recibir al cliente y registra la retroalimentación en el CRM al concluir la cita._`;
+
+    // Si tiene teléfono registrado el encargado, enviarlo directamente
+    if (targetPhone && targetPhone.trim() !== '') {
+        try {
+            console.log(`Enviando notificación Wasapi al encargado de ${lead.sucursal} (${targetPhone})...`);
+            
+            // Intentar invocar la Edge Function wasapi-send
+            const { data, error } = await supabaseClient.functions.invoke('wasapi-send', {
+                body: {
+                    phone: targetPhone,
+                    message: waMessage
+                }
+            });
+
+            if (error) {
+                // Si la edge function directa falla, intentar por RPC
+                await supabaseClient.rpc('send_wasapi_message', {
+                    phone: targetPhone,
+                    message: waMessage
+                });
+            }
+        } catch (e) {
+            console.warn('No se pudo enviar WhatsApp automático vía Wasapi al encargado:', e);
+        }
+    }
+}
+

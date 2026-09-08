@@ -894,3 +894,379 @@ thead th span {
 [data-theme="dark"] #calendar .fc-button-primary:not(:disabled):active {
   color: #0f111a !important;
 }
+
+/* ==========================================
+   Notification Center Dropdown
+   ========================================== */
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 380px;
+  max-width: 90vw;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 0.85rem;
+  box-shadow: 0 20px 35px -5px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--border-color);
+  z-index: 9999;
+  overflow: hidden;
+  animation: notifFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes notifFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.notification-dropdown-header {
+  padding: 0.85rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-panel);
+}
+
+.notification-dropdown-tabs {
+  display: flex;
+  gap: 0.25rem;
+  background: var(--bg-dark);
+  padding: 0.25rem;
+  margin: 0.5rem 0.75rem 0.25rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-color);
+}
+
+.notification-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.35rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.notification-tab.active {
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.notification-list-container {
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.notification-item {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  transition: background 0.15s ease;
+  cursor: pointer;
+}
+
+.notification-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.notification-item.unread {
+  background: rgba(99, 102, 241, 0.06);
+  border-left: 3px solid var(--accent-primary);
+}
+
+.notification-item-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.85rem;
+}
+
+.notification-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-item-title {
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.2rem;
+  line-height: 1.3;
+}
+
+.notification-item-message {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 0.3rem;
+  word-break: break-word;
+}
+
+.notification-item-time {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  opacity: 0.75;
+}
+
+/* ==========================================
+   Citas de Sucursal Cards & Actions
+   ========================================== */
+.cita-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 0.85rem;
+  padding: 1.25rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.cita-card:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+.cita-card.status-pendiente {
+  border-left: 5px solid var(--warning);
+}
+
+.cita-card.status-asistio {
+  border-left: 5px solid var(--success);
+}
+
+.cita-card.status-no_asistio {
+  border-left: 5px solid var(--danger);
+}
+
+.cita-card.status-reagendo {
+  border-left: 5px solid #f59e0b;
+}
+
+.cita-card.status-negociacion {
+  border-left: 5px solid #38bdf8;
+}
+
+.cita-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.cita-card-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cita-card-badges {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.cita-badge {
+  font-size: 0.725rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.cita-badge-branch {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--accent-primary);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.cita-badge-agent {
+  background: var(--bg-dark);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.cita-badge-time {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.cita-card-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  background: var(--bg-dark);
+  padding: 0.85rem 1rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+}
+
+.cita-detail-item {
+  font-size: 0.825rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cita-detail-item strong {
+  color: var(--text-primary);
+}
+
+.cita-feedback-preview {
+  background: rgba(99, 102, 241, 0.05);
+  border: 1px dashed rgba(99, 102, 241, 0.3);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.825rem;
+}
+
+.cita-actions-bar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  border-top: 1px solid var(--border-color);
+  padding-top: 0.85rem;
+}
+
+/* Specific Action Buttons */
+.btn-action-asistio {
+  background: rgba(34, 197, 94, 0.12) !important;
+  color: #22c55e !important;
+  border: 1px solid #22c55e !important;
+  padding: 0.4rem 0.75rem !important;
+  font-size: 0.825rem !important;
+  font-weight: 600 !important;
+  border-radius: 0.5rem !important;
+}
+.btn-action-asistio:hover {
+  background: #22c55e !important;
+  color: #ffffff !important;
+}
+
+.btn-action-noasistio {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #ef4444 !important;
+  border: 1px solid #ef4444 !important;
+  padding: 0.4rem 0.75rem !important;
+  font-size: 0.825rem !important;
+  font-weight: 600 !important;
+  border-radius: 0.5rem !important;
+}
+.btn-action-noasistio:hover {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+.btn-action-reagendo {
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #f59e0b !important;
+  border: 1px solid #f59e0b !important;
+  padding: 0.4rem 0.75rem !important;
+  font-size: 0.825rem !important;
+  font-weight: 600 !important;
+  border-radius: 0.5rem !important;
+}
+.btn-action-reagendo:hover {
+  background: #f59e0b !important;
+  color: #ffffff !important;
+}
+
+.btn-action-negociacion {
+  background: rgba(56, 189, 248, 0.12) !important;
+  color: #38bdf8 !important;
+  border: 1px solid #38bdf8 !important;
+  padding: 0.4rem 0.75rem !important;
+  font-size: 0.825rem !important;
+  font-weight: 600 !important;
+  border-radius: 0.5rem !important;
+}
+.btn-action-negociacion:hover {
+  background: #38bdf8 !important;
+  color: #ffffff !important;
+}
+
+.btn-action-comentarios {
+  background: rgba(99, 102, 241, 0.12) !important;
+  color: var(--accent-primary) !important;
+  border: 1px solid var(--accent-primary) !important;
+  padding: 0.4rem 0.75rem !important;
+  font-size: 0.825rem !important;
+  font-weight: 600 !important;
+  border-radius: 0.5rem !important;
+}
+.btn-action-comentarios:hover {
+  background: var(--accent-primary) !important;
+  color: #0f172a !important;
+}
+
+/* Chip Tags */
+.chip-tag {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chip-tag:hover {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  transform: translateY(-1px);
+}
+
+.active-filter-btn {
+  background: var(--accent-primary) !important;
+  color: #0f172a !important;
+  border-color: var(--accent-primary) !important;
+  font-weight: 600 !important;
+}
+
+/* Actionable Toasts with Embedded Buttons */
+.toast.actionable-toast {
+  min-width: 320px;
+  max-width: 420px;
+  border-left: 4px solid var(--accent-primary);
+}
+
+.actionable-toast-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  flex-wrap: wrap;
+}
