@@ -1270,3 +1270,41 @@ thead th span {
   margin-top: 0.6rem;
   flex-wrap: wrap;
 }
+
+/* Date & Time Picker Controls & Chips */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+.chip-time {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.35rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.chip-time:hover {
+  background: rgba(189, 251, 47, 0.15);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  transform: translateY(-1px);
+}
+
+.chip-time.active {
+  background: var(--accent-primary) !important;
+  border-color: var(--accent-primary) !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 8px rgba(189, 251, 47, 0.4);
+}
+

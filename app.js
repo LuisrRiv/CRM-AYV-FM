@@ -1142,6 +1142,57 @@ async function fetchLeads() {
         
         const dateStr = new Date(lead.created_at).toLocaleDateString('en-GB');
         
+        // Formatear visualmente la fecha y el horario de la cita si existen
+        let fechaDisplayHtml = `<span style="color: var(--text-secondary); font-size: 0.85rem;">${dateStr}</span>`;
+        if (lead.fecha_cita) {
+            try {
+                const clean = lead.fecha_cita.trim();
+                let dDate = '';
+                let dTime = '';
+                if (clean.includes('T')) {
+                    const parts = clean.split('T');
+                    dDate = parts[0];
+                    dTime = parts[1].substring(0, 5);
+                } else if (clean.includes(' ')) {
+                    const parts = clean.split(' ');
+                    dDate = parts[0];
+                    dTime = parts[1].substring(0, 5);
+                } else {
+                    dDate = clean;
+                }
+
+                let timeStr = '';
+                if (dTime) {
+                    const [hh, mm] = dTime.split(':').map(Number);
+                    const dt = new Date(2000, 0, 1, hh, mm);
+                    timeStr = dt.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true });
+                }
+
+                let shortDate = dDate;
+                if (dDate.includes('-')) {
+                    const [y, m, d] = dDate.split('-').map(Number);
+                    const dtObj = new Date(y, m - 1, d);
+                    shortDate = dtObj.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+                }
+
+                fechaDisplayHtml = `
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                        <span style="font-weight: 600; color: var(--accent-primary); font-size: 0.85rem;" title="Fecha de Cita: ${shortDate}">
+                            <i class="fa-solid fa-calendar-check" style="font-size: 0.75rem;"></i> ${shortDate}
+                        </span>
+                        ${timeStr ? `
+                            <span style="font-size: 0.75rem; color: #38bdf8; font-weight: 600;" title="Horario programado">
+                                <i class="fa-solid fa-clock" style="font-size: 0.7rem;"></i> ${timeStr}
+                            </span>
+                        ` : ''}
+                        <span style="font-size: 0.65rem; color: var(--text-secondary); opacity: 0.7;" title="Registro original">${dateStr}</span>
+                    </div>
+                `;
+            } catch(e) {
+                fechaDisplayHtml = `<span style="color: var(--text-secondary);">${dateStr}</span>`;
+            }
+        }
+        
         const tr = document.createElement('tr');
         tr.dataset.id = lead.id;
         tr.onclick = () => openLeadPanel(
@@ -1157,7 +1208,7 @@ async function fetchLeads() {
         );
         
         tr.innerHTML = `
-            <td>${dateStr}</td>
+            <td>${fechaDisplayHtml}</td>
             <td class="font-medium">${lead.sucursal || ''}</td>
             <td>${lead.nombre || ''}</td>
             <td>${lead.vehiculo || ''}</td>
@@ -1175,6 +1226,11 @@ async function fetchLeads() {
             <td><span style="font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); background: var(--bg-dark); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">${lead.creado_por || '-'}</span></td>
             <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${shortObs}</td>
             <td style="color: #6366f1; font-weight: 500; font-style: italic;">${lead.obs_encargado || ''}</td>
+            <td style="text-align: center;">
+                <button class="btn btn-outline" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; border-radius: 0.4rem; border-color: rgba(255,255,255,0.15);" title="Editar Cita / Lead">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+            </td>
         `;
         tbody.appendChild(tr);
     });
@@ -1205,6 +1261,147 @@ async function fetchLeads() {
 // ==========================================
 let currentLeadId = null;
 
+// Sincronización y manejo interactivo de Fecha y Horario de la Cita
+function syncCombinedFechaCita() {
+    const dateInput = document.getElementById('panelLeadFechaDate');
+    const timeInput = document.getElementById('panelLeadFechaTime');
+    const hiddenInput = document.getElementById('panelLeadFechaCita');
+    const previewEl = document.getElementById('panelLeadFechaCitaPreview');
+
+    if (!dateInput || !timeInput || !hiddenInput) return;
+
+    const dateVal = dateInput.value;
+    let timeVal = timeInput.value;
+
+    // Si seleccionó fecha pero no hora, asignar automáticamente las 10:00 AM
+    if (dateVal && !timeVal) {
+        timeVal = '10:00';
+        timeInput.value = timeVal;
+    }
+
+    if (dateVal && timeVal) {
+        hiddenInput.value = `${dateVal}T${timeVal}`;
+        updateActiveTimeChip(timeVal);
+
+        if (previewEl) {
+            try {
+                const [year, month, day] = dateVal.split('-').map(Number);
+                const [hour, min] = timeVal.split(':').map(Number);
+                const d = new Date(year, month - 1, day, hour, min);
+                const datePart = d.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
+                const timePart = d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true });
+                previewEl.innerHTML = `<span style="color: var(--accent-primary); font-weight: 600;">📅 ${datePart} a las ${timePart}</span>`;
+            } catch(e) {
+                previewEl.innerText = `${dateVal} ${timeVal}`;
+            }
+        }
+    } else if (dateVal) {
+        hiddenInput.value = `${dateVal}T10:00`;
+        if (previewEl) previewEl.innerText = `Día: ${dateVal} (10:00 AM)`;
+    } else {
+        hiddenInput.value = '';
+        updateActiveTimeChip('');
+        if (previewEl) previewEl.innerText = 'Sin cita programada';
+    }
+}
+
+function setPanelLeadTime(timeStr) {
+    const timeInput = document.getElementById('panelLeadFechaTime');
+    const dateInput = document.getElementById('panelLeadFechaDate');
+    
+    if (timeInput) {
+        timeInput.value = timeStr;
+    }
+    
+    // Si no ha seleccionado fecha aún, poner automáticamente la fecha de hoy
+    if (dateInput && !dateInput.value) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        dateInput.value = `${yyyy}-${mm}-${dd}`;
+    }
+    
+    syncCombinedFechaCita();
+}
+
+function updateActiveTimeChip(selectedTime) {
+    const container = document.getElementById('panelTimeChipsContainer');
+    if (!container) return;
+    const chips = container.querySelectorAll('.chip-time');
+    chips.forEach(btn => {
+        const onclickAttr = btn.getAttribute('onclick') || '';
+        const match = onclickAttr.match(/setPanelLeadTime\('([^']+)'\)/);
+        if (match && match[1] === selectedTime) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+}
+
+function setPanelLeadFechaCitaValues(fechaCita) {
+    const dateInput = document.getElementById('panelLeadFechaDate');
+    const timeInput = document.getElementById('panelLeadFechaTime');
+    const hiddenInput = document.getElementById('panelLeadFechaCita');
+    const previewEl = document.getElementById('panelLeadFechaCitaPreview');
+
+    let dateVal = '';
+    let timeVal = '';
+
+    if (fechaCita && typeof fechaCita === 'string' && fechaCita.trim() !== '') {
+        const clean = fechaCita.trim();
+        if (clean.length === 10) {
+            dateVal = clean;
+            timeVal = '10:00';
+        } else if (clean.includes('T')) {
+            const parts = clean.split('T');
+            dateVal = parts[0];
+            timeVal = parts[1].substring(0, 5);
+        } else if (clean.includes(' ')) {
+            const parts = clean.split(' ');
+            dateVal = parts[0];
+            timeVal = parts[1].substring(0, 5);
+        } else {
+            try {
+                const d = new Date(clean);
+                if (!isNaN(d.getTime())) {
+                    const yyyy = d.getFullYear();
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    const hh = String(d.getHours()).padStart(2, '0');
+                    const min = String(d.getMinutes()).padStart(2, '0');
+                    dateVal = `${yyyy}-${mm}-${dd}`;
+                    timeVal = `${hh}:${min}`;
+                }
+            } catch(e) {}
+        }
+    }
+
+    if (dateInput) dateInput.value = dateVal;
+    if (timeInput) timeInput.value = timeVal;
+    if (hiddenInput) hiddenInput.value = (dateVal && timeVal) ? `${dateVal}T${timeVal}` : '';
+
+    updateActiveTimeChip(timeVal);
+
+    if (previewEl) {
+        if (dateVal && timeVal) {
+            try {
+                const [year, month, day] = dateVal.split('-').map(Number);
+                const [hour, min] = timeVal.split(':').map(Number);
+                const d = new Date(year, month - 1, day, hour, min);
+                const datePart = d.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
+                const timePart = d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true });
+                previewEl.innerHTML = `<span style="color: var(--accent-primary); font-weight: 600;">📅 ${datePart} a las ${timePart}</span>`;
+            } catch(e) {
+                previewEl.innerText = `${dateVal} ${timeVal}`;
+            }
+        } else {
+            previewEl.innerText = 'Sin cita programada';
+        }
+    }
+}
+
 function openNewLeadPanel() {
     currentLeadId = null;
     document.getElementById('panelTitle').innerText = "Nuevo Lead";
@@ -1215,7 +1412,14 @@ function openNewLeadPanel() {
     document.getElementById('panelLeadNumero').value = "";
     document.getElementById('panelLeadObs').value = "";
     document.getElementById('panelLeadObsEncargado').value = "";
-    document.getElementById('panelLeadFechaCita').value = "";
+    
+    // Sugerir fecha actual y horario de 10:00 AM para facilitar agendar cita
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    setPanelLeadFechaCitaValues(`${yyyy}-${mm}-${dd}T10:00`);
+
     const btnDel = document.getElementById('btnDeleteLead');
     if(btnDel) btnDel.style.display = 'none';
     document.getElementById('leadPanel').classList.add('open');
@@ -1248,34 +1452,7 @@ function openLeadPanel(id, name, stage, sucursal, vehiculo, numero, obs, obsEnca
     document.getElementById('panelLeadObs').value = obs || '';
     document.getElementById('panelLeadObsEncargado').value = obsEncargado || "";
 
-    // Formatear fecha para input datetime-local (requiere YYYY-MM-DDTHH:mm)
-    let formattedFecha = "";
-    if (fechaCita) {
-        const clean = fechaCita.trim();
-        if (clean.length === 10) {
-            formattedFecha = `${clean}T09:00`;
-        } else if (clean.includes('T')) {
-            formattedFecha = clean.substring(0, 16);
-        } else {
-            const spaceIdx = clean.indexOf(' ');
-            if (spaceIdx !== -1) {
-                formattedFecha = clean.substring(0, spaceIdx) + 'T' + clean.substring(spaceIdx + 1, spaceIdx + 6);
-            } else {
-                try {
-                    const d = new Date(clean);
-                    if (!isNaN(d.getTime())) {
-                        const yyyy = d.getFullYear();
-                        const mm = String(d.getMonth() + 1).padStart(2, '0');
-                        const dd = String(d.getDate()).padStart(2, '0');
-                        const hh = String(d.getHours()).padStart(2, '0');
-                        const min = String(d.getMinutes()).padStart(2, '0');
-                        formattedFecha = `${yyyy}-${mm}-${dd}T${hh}:${min}`;
-                    }
-                } catch(e) {}
-            }
-        }
-    }
-    document.getElementById('panelLeadFechaCita').value = formattedFecha;
+    setPanelLeadFechaCitaValues(fechaCita);
 
     const btnDel = document.getElementById('btnDeleteLead');
     if(btnDel) btnDel.style.display = 'block';
@@ -1293,11 +1470,23 @@ async function saveLead() {
     const vehiculo = document.getElementById('panelLeadVehiculo').value.trim();
     const numero = document.getElementById('panelLeadNumero').value.trim();
     const obs = document.getElementById('panelLeadObs').value.trim();
-    const fechaCita = document.getElementById('panelLeadFechaCita').value;
+
+    // Sincronizar fecha y horario antes de guardar
+    syncCombinedFechaCita();
+    let fechaCita = document.getElementById('panelLeadFechaCita').value;
 
     if(!name) {
         triggerNotification('Error', 'El nombre del lead es obligatorio', 'warning');
         return;
+    }
+
+    // Si la etapa es CITA y tiene fecha pero no horario, asegurar horario 10:00
+    const dateInput = document.getElementById('panelLeadFechaDate');
+    const timeInput = document.getElementById('panelLeadFechaTime');
+    if (stage === 'CITA' && dateInput && dateInput.value && (!timeInput || !timeInput.value)) {
+        timeInput.value = '10:00';
+        syncCombinedFechaCita();
+        fechaCita = document.getElementById('panelLeadFechaCita').value;
     }
 
     const currentUser = localStorage.getItem('crm-logged-in') || 'Desconocido';
@@ -1366,6 +1555,18 @@ function simulateStageChange(selectElement) {
     const newStage = selectElement.value;
     const leadName = document.getElementById('panelLeadNameInput').value || 'Nuevo Lead';
     
+    // Si cambia el estatus a CITA y no hay fecha seleccionada, autocompletar con fecha y hora sugeridas
+    if (newStage === 'CITA') {
+        const dateInput = document.getElementById('panelLeadFechaDate');
+        if (dateInput && !dateInput.value) {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            setPanelLeadFechaCitaValues(`${yyyy}-${mm}-${dd}T10:00`);
+        }
+    }
+
     if(previousStage !== newStage) {
         triggerNotification(
             'Automatización Disparada', 
@@ -1743,6 +1944,13 @@ function applyGlobalFilter() {
     // Helper to check if a date string (DD/MM/YYYY or D/M/YYYY) matches the filter (YYYY-MM)
     const matchesFilter = (dateStr) => {
         if (filter === 'all') return true;
+        const match = dateStr.match(/\d{1,2}\/\d{1,2}\/\d{4}/);
+        if (match) {
+            const parts = match[0].split('/');
+            const m = parts[1].padStart(2, '0');
+            const y = parts[2];
+            return `${y}-${m}` === filter;
+        }
         const parts = dateStr.split('/');
         if (parts.length === 3) {
             const m = parts[1].padStart(2, '0');
@@ -1806,7 +2014,9 @@ function applyGlobalFilter() {
                 
                 let matchesWeek = true;
                 if (leadWeekFilter !== 'all') {
-                    const parts = dateStr.split('/');
+                    const match = dateStr.match(/\d{1,2}\/\d{1,2}\/\d{4}/);
+                    const rawDate = match ? match[0] : dateStr;
+                    const parts = rawDate.split('/');
                     if (parts.length === 3) {
                         const day = parseInt(parts[0]);
                         const month = parseInt(parts[1]);
@@ -2964,16 +3174,50 @@ async function exportLeadsToExcel() {
         if (error) throw error;
 
         // Format data for Excel
-        const rows = data.map(lead => ({
-            'FECHA': new Date(lead.created_at).toLocaleDateString('en-GB'),
-            'SUCURSAL': lead.sucursal || '',
-            'NOMBRE': lead.nombre || '',
-            'VEHÍCULO': lead.vehiculo || '',
-            'ETAPA': lead.etapa || '',
-            'NÚMERO': lead.numero || '',
-            'AGENTE': lead.creado_por || '',
-            'OBSERVACIONES': lead.observaciones || ''
-        }));
+        const rows = data.map(lead => {
+            let fechaCitaStr = '';
+            let horarioCitaStr = '';
+            if (lead.fecha_cita) {
+                try {
+                    const clean = lead.fecha_cita.trim();
+                    if (clean.includes('T')) {
+                        const parts = clean.split('T');
+                        fechaCitaStr = parts[0];
+                        if (parts[1]) {
+                            const [hh, mm] = parts[1].substring(0, 5).split(':').map(Number);
+                            const dt = new Date(2000, 0, 1, hh, mm);
+                            horarioCitaStr = dt.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true });
+                        }
+                    } else if (clean.includes(' ')) {
+                        const parts = clean.split(' ');
+                        fechaCitaStr = parts[0];
+                        if (parts[1]) {
+                            const [hh, mm] = parts[1].substring(0, 5).split(':').map(Number);
+                            const dt = new Date(2000, 0, 1, hh, mm);
+                            horarioCitaStr = dt.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true });
+                        }
+                    } else {
+                        fechaCitaStr = clean;
+                    }
+                } catch(e) {
+                    fechaCitaStr = lead.fecha_cita;
+                }
+            }
+
+            return {
+                'FECHA REGISTRO': new Date(lead.created_at).toLocaleDateString('en-GB'),
+                'FECHA CITA': fechaCitaStr,
+                'HORARIO CITA': horarioCitaStr,
+                'SUCURSAL': lead.sucursal || '',
+                'NOMBRE': lead.nombre || '',
+                'VEHÍCULO': lead.vehiculo || '',
+                'ETAPA': lead.etapa || '',
+                'NÚMERO': lead.numero || '',
+                'AGENTE': lead.creado_por || '',
+                'OBSERVACIONES': lead.observaciones || '',
+                'OBS. ENCARGADO': lead.obs_encargado || ''
+            };
+        });
 
         // Create workbook and worksheet
         const wb = XLSX.utils.book_new();
@@ -2981,14 +3225,17 @@ async function exportLeadsToExcel() {
 
         // Set column widths
         ws['!cols'] = [
-            { wch: 12 },  // FECHA
+            { wch: 15 },  // FECHA REGISTRO
+            { wch: 15 },  // FECHA CITA
+            { wch: 15 },  // HORARIO CITA
             { wch: 22 },  // SUCURSAL
             { wch: 25 },  // NOMBRE
             { wch: 20 },  // VEHÍCULO
             { wch: 15 },  // ETAPA
             { wch: 15 },  // NÚMERO
             { wch: 18 },  // AGENTE
-            { wch: 35 }   // OBSERVACIONES
+            { wch: 35 },  // OBSERVACIONES
+            { wch: 35 }   // OBS. ENCARGADO
         ];
 
         XLSX.utils.book_append_sheet(wb, ws, 'Reporte de Citas');
@@ -5062,7 +5309,7 @@ async function renderCalendar() {
             openNewLeadPanel();
             
             // Colocar la fecha y hora seleccionada en el formulario
-            document.getElementById('panelLeadFechaCita').value = formattedDate;
+            setPanelLeadFechaCitaValues(formattedDate);
         },
         eventDrop: async function(info) {
             if (isReadOnlyUser()) {
@@ -5912,11 +6159,14 @@ async function openRetroalimentacionModal(leadId, defaultOption = 'ASISTIO') {
         if (data.fecha_cita) {
             const d = new Date(data.fecha_cita);
             fText = d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) + ' ' + d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-            document.getElementById('retroNuevaFechaInput').value = data.fecha_cita.slice(0, 16);
+            setRetroFechaCitaValues(data.fecha_cita.slice(0, 16));
         } else {
             const now = new Date();
-            now.setHours(now.getHours() + 24);
-            document.getElementById('retroNuevaFechaInput').value = now.toISOString().slice(0, 16);
+            now.setDate(now.getDate() + 1);
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            setRetroFechaCitaValues(`${yyyy}-${mm}-${dd}T10:00`);
         }
         document.getElementById('retroFechaCita').innerText = fText;
 
@@ -5932,6 +6182,66 @@ async function openRetroalimentacionModal(leadId, defaultOption = 'ASISTIO') {
     } catch (e) {
         console.error('Error openRetroalimentacionModal:', e);
     }
+}
+
+function syncRetroFechaCita() {
+    const dInput = document.getElementById('retroFechaDate');
+    const tInput = document.getElementById('retroFechaTime');
+    const hidden = document.getElementById('retroNuevaFechaInput');
+    if (!dInput || !tInput || !hidden) return;
+    const dVal = dInput.value;
+    let tVal = tInput.value || '10:00';
+    if (dVal && !tInput.value) tInput.value = tVal;
+    hidden.value = dVal ? `${dVal}T${tVal}` : '';
+
+    const chips = document.querySelectorAll('#retroTimeChipsContainer .chip-time');
+    chips.forEach(btn => {
+        const match = (btn.getAttribute('onclick') || '').match(/setRetroTime\('([^']+)'\)/);
+        btn.classList.toggle('active', match && match[1] === tVal);
+    });
+}
+
+function setRetroTime(timeStr) {
+    const tInput = document.getElementById('retroFechaTime');
+    const dInput = document.getElementById('retroFechaDate');
+    if (tInput) tInput.value = timeStr;
+    if (dInput && !dInput.value) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const yyyy = tomorrow.getFullYear();
+        const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+        const dd = String(tomorrow.getDate()).padStart(2, '0');
+        dInput.value = `${yyyy}-${mm}-${dd}`;
+    }
+    syncRetroFechaCita();
+}
+
+function setRetroFechaCitaValues(isoStr) {
+    const dInput = document.getElementById('retroFechaDate');
+    const tInput = document.getElementById('retroFechaTime');
+    const hidden = document.getElementById('retroNuevaFechaInput');
+    let dVal = '';
+    let tVal = '10:00';
+    if (isoStr && typeof isoStr === 'string' && isoStr.trim() !== '') {
+        const clean = isoStr.trim();
+        if (clean.includes('T')) {
+            const p = clean.split('T');
+            dVal = p[0];
+            tVal = p[1].substring(0, 5);
+        } else if (clean.length === 10) {
+            dVal = clean;
+            tVal = '10:00';
+        }
+    }
+    if (dInput) dInput.value = dVal;
+    if (tInput) tInput.value = tVal;
+    if (hidden) hidden.value = dVal ? `${dVal}T${tVal}` : '';
+
+    const chips = document.querySelectorAll('#retroTimeChipsContainer .chip-time');
+    chips.forEach(btn => {
+        const match = (btn.getAttribute('onclick') || '').match(/setRetroTime\('([^']+)'\)/);
+        btn.classList.toggle('active', match && match[1] === tVal);
+    });
 }
 
 function closeRetroalimentacionModal() {
@@ -5982,6 +6292,7 @@ function appendRetroTag(tagText) {
 }
 
 async function saveCitaRetroalimentacion() {
+    syncRetroFechaCita();
     const leadId = document.getElementById('retroLeadId').value;
     const accion = document.getElementById('retroAccionSelected').value || 'ASISTIO';
     const comentarios = document.getElementById('retroComentariosInput').value.trim();

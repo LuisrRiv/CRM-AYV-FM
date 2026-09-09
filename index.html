@@ -301,7 +301,7 @@
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Fecha</th>
+                            <th>Fecha / Cita</th>
                             <th>Sucursal</th>
                             <th>Nombre</th>
                             <th>Vehículo</th>
@@ -310,7 +310,7 @@
                             <th>Agente</th>
                             <th>Observaciones</th>
                             <th>Obs. Encargado</th>
-                            <th></th>
+                            <th style="width: 50px; text-align: center;"></th>
                         </tr>
                     </thead>
                     <tbody id="leadsTableBody">
@@ -1192,9 +1192,50 @@
                 <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;"><i
                         class="fa-brands fa-slack"></i> Un cambio de estado notificará vía Slack.</p>
             </div>
-            <div class="form-group" id="groupLeadFechaCita">
-                <label>Fecha de la Cita</label>
-                <input type="datetime-local" class="form-control" id="panelLeadFechaCita">
+            <div class="form-group" id="groupLeadFechaCita" style="background: rgba(189, 251, 47, 0.04); border: 1px solid rgba(189, 251, 47, 0.2); border-radius: 0.75rem; padding: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; flex-wrap: wrap; gap: 0.25rem;">
+                    <label style="font-weight: 600; color: var(--accent-primary); margin-bottom: 0; display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fa-solid fa-calendar-check"></i> Fecha y Horario de la Cita
+                    </label>
+                    <span id="panelLeadFechaCitaPreview" style="font-size: 0.75rem; color: var(--text-secondary); font-style: italic;">Sin cita programada</span>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.6rem;">
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem; display: block;">
+                            <i class="fa-solid fa-calendar-day"></i> Día:
+                        </label>
+                        <input type="date" class="form-control" id="panelLeadFechaDate" onchange="syncCombinedFechaCita()">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem; display: block;">
+                            <i class="fa-solid fa-clock"></i> Horario:
+                        </label>
+                        <input type="time" class="form-control" id="panelLeadFechaTime" onchange="syncCombinedFechaCita()">
+                    </div>
+                </div>
+
+                <!-- Chips de Horarios Rápidos -->
+                <div style="margin-top: 0.5rem;">
+                    <label style="font-size: 0.72rem; color: var(--text-secondary); display: block; margin-bottom: 0.35rem;">
+                        <i class="fa-solid fa-bolt" style="color: var(--accent-primary);"></i> Horarios sugeridos (un clic):
+                    </label>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;" id="panelTimeChipsContainer">
+                        <button type="button" class="chip-time" onclick="setPanelLeadTime('09:00')">09:00 AM</button>
+                        <button type="button" class="chip-time" onclick="setPanelLeadTime('10:00')">10:00 AM</button>
+                        <button type="button" class="chip-time" onclick="setPanelLeadTime('11:00')">11:00 AM</button>
+                        <button type="button" class="chip-time" onclick="setPanelLeadTime('12:00')">12:00 PM</button>
+                        <button type="button" class="chip-time" onclick="setPanelLeadTime('13:00')">01:00 PM</button>
+                        <button type="button" class="chip-time" onclick="setPanelLeadTime('14:00')">02:00 PM</button>
+                        <button type="button" class="chip-time" onclick="setPanelLeadTime('15:00')">03:00 PM</button>
+                        <button type="button" class="chip-time" onclick="setPanelLeadTime('16:00')">04:00 PM</button>
+                        <button type="button" class="chip-time" onclick="setPanelLeadTime('17:00')">05:00 PM</button>
+                        <button type="button" class="chip-time" onclick="setPanelLeadTime('18:00')">06:00 PM</button>
+                    </div>
+                </div>
+
+                <!-- Input oculto para sincronización continua con Supabase / FullCalendar -->
+                <input type="hidden" id="panelLeadFechaCita">
             </div>
 
             <div class="form-group">
@@ -1615,8 +1656,30 @@
 
             <!-- Campo Reagendar Fecha (Visible solo si seleccionó REAGENDO) -->
             <div class="form-group" id="retroNuevaFechaGroup" style="display: none; background: rgba(245, 158, 11, 0.1); padding: 1rem; border-radius: 0.5rem; border: 1px solid #f59e0b; margin-bottom: 1.25rem;">
-                <label style="color: #f59e0b; font-weight: 600; display: block; margin-bottom: 0.5rem;"><i class="fa-solid fa-calendar-day"></i> Nueva Fecha y Hora de la Cita</label>
-                <input type="datetime-local" class="form-control" id="retroNuevaFechaInput" style="border-color: #f59e0b;">
+                <label style="color: #f59e0b; font-weight: 600; display: block; margin-bottom: 0.5rem;"><i class="fa-solid fa-calendar-day"></i> Nueva Fecha y Horario de la Cita</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem; display: block;">Día:</label>
+                        <input type="date" class="form-control" id="retroFechaDate" onchange="syncRetroFechaCita()" style="border-color: #f59e0b;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem; display: block;">Horario:</label>
+                        <input type="time" class="form-control" id="retroFechaTime" onchange="syncRetroFechaCita()" style="border-color: #f59e0b;">
+                    </div>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.35rem;" id="retroTimeChipsContainer">
+                    <button type="button" class="chip-time" onclick="setRetroTime('09:00')">09:00 AM</button>
+                    <button type="button" class="chip-time" onclick="setRetroTime('10:00')">10:00 AM</button>
+                    <button type="button" class="chip-time" onclick="setRetroTime('11:00')">11:00 AM</button>
+                    <button type="button" class="chip-time" onclick="setRetroTime('12:00')">12:00 PM</button>
+                    <button type="button" class="chip-time" onclick="setRetroTime('13:00')">01:00 PM</button>
+                    <button type="button" class="chip-time" onclick="setRetroTime('14:00')">02:00 PM</button>
+                    <button type="button" class="chip-time" onclick="setRetroTime('15:00')">03:00 PM</button>
+                    <button type="button" class="chip-time" onclick="setRetroTime('16:00')">04:00 PM</button>
+                    <button type="button" class="chip-time" onclick="setRetroTime('17:00')">05:00 PM</button>
+                    <button type="button" class="chip-time" onclick="setRetroTime('18:00')">06:00 PM</button>
+                </div>
+                <input type="hidden" id="retroNuevaFechaInput">
             </div>
 
             <!-- Tags / Chips Rápidos de Retroalimentación -->
@@ -1666,7 +1729,7 @@
     <!-- FullCalendar CDN -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/locales/es.global.min.js"></script>
-    <script src="app.js?v=10"></script>
+    <script src="app.js?v=11"></script>
 </body>
 
 </html>
