@@ -636,7 +636,7 @@
                             <th>Calificador</th>
                             <th>Closer</th>
                             <th>Observaciones</th>
-                            <th></th>
+                            <th style="width: 75px; text-align: center;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="dispersionesTableBody">
@@ -1298,7 +1298,7 @@
     <!-- Slide-over Panel (Dispersion) -->
     <div class="slide-over" id="dispersionPanel">
         <div class="slide-header">
-            <h2 class="text-xl">Nueva Dispersión</h2>
+            <h2 class="text-xl" id="dispersionPanelTitle">Nueva Dispersión</h2>
             <button class="close-btn" onclick="closeDispersionPanel()"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="slide-content">
@@ -1345,8 +1345,10 @@
             </div>
 
             <div style="margin-top: 2rem; display: flex; gap: 1rem;">
-                <button class="btn" style="flex: 1;" onclick="saveDispersion()">Guardar</button>
+                <button class="btn" style="flex: 2;" id="btnSaveDispersion" onclick="saveDispersion()">Guardar</button>
                 <button class="btn btn-outline" style="flex: 1;" onclick="closeDispersionPanel()">Cancelar</button>
+                <button class="btn" style="flex: 1; background: var(--danger); border-color: var(--danger); display: none;"
+                    id="btnDeleteDispersion" onclick="deleteCurrentDispersion()">Eliminar</button>
             </div>
         </div>
     </div>

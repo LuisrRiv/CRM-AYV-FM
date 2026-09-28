@@ -1805,7 +1805,19 @@ async function deleteCurrentTask() {
 // ==========================================
 // Slide-over Logic (Dispersiones)
 // ==========================================
+let currentDispersionId = null;
+
 function openNewDispersionPanel() {
+    currentDispersionId = null;
+    const titleEl = document.getElementById('dispersionPanelTitle');
+    if (titleEl) titleEl.innerText = "Nueva Dispersión";
+
+    const saveBtn = document.getElementById('btnSaveDispersion');
+    if (saveBtn) saveBtn.innerText = "Guardar";
+
+    const delBtn = document.getElementById('btnDeleteDispersion');
+    if (delBtn) delBtn.style.display = 'none';
+
     document.getElementById('dispCliente').value = "";
     document.getElementById('dispSucursal').value = "XALAPA 20 NOV";
     
@@ -1821,7 +1833,44 @@ function openNewDispersionPanel() {
     document.getElementById('dispersionPanel').classList.add('open');
 }
 
+function openEditDispersion(id) {
+    const disp = (window.cachedDispersiones || []).find(d => String(d.id) === String(id));
+    if (!disp) return;
+
+    currentDispersionId = disp.id;
+
+    const titleEl = document.getElementById('dispersionPanelTitle');
+    if (titleEl) titleEl.innerText = "Editar Dispersión";
+
+    const saveBtn = document.getElementById('btnSaveDispersion');
+    if (saveBtn) saveBtn.innerText = "Guardar Cambios";
+
+    const delBtn = document.getElementById('btnDeleteDispersion');
+    if (delBtn) delBtn.style.display = 'block';
+
+    document.getElementById('dispCliente').value = disp.cliente || "";
+    document.getElementById('dispSucursal').value = disp.sucursal || "XALAPA 20 NOV";
+
+    // Handle date formatting for <input type="date"> (expects YYYY-MM-DD)
+    let dateVal = disp.fecha || "";
+    if (dateVal.includes('/')) {
+        const parts = dateVal.split('/');
+        if (parts.length === 3) {
+            dateVal = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+    }
+    document.getElementById('dispFecha').value = dateVal;
+
+    document.getElementById('dispMonto').value = disp.monto != null ? disp.monto : "";
+    document.getElementById('dispCalificador').value = disp.calificador || "";
+    document.getElementById('dispCloser').value = disp.closer || "";
+    document.getElementById('dispObs').value = disp.observaciones || "";
+
+    document.getElementById('dispersionPanel').classList.add('open');
+}
+
 function closeDispersionPanel() {
+    currentDispersionId = null;
     document.getElementById('dispersionPanel').classList.remove('open');
 }
 
@@ -1861,6 +1910,8 @@ async function fetchDispersiones() {
         
         const tr = document.createElement('tr');
         tr.dataset.id = disp.id;
+        tr.title = 'Haz clic para editar esta dispersión';
+        tr.onclick = () => openEditDispersion(disp.id);
         tr.innerHTML = `
             <td class="font-medium">${disp.cliente || ''}</td>
             <td><span class="badge ${badgeClass}">${disp.sucursal || ''}</span></td>
@@ -1869,7 +1920,16 @@ async function fetchDispersiones() {
             <td>${disp.calificador || ''}</td>
             <td>${disp.closer || ''}</td>
             <td>${disp.observaciones || ''}</td>
-            <td><button onclick="event.stopPropagation(); deleteRow(this, 'Dispersión', '${disp.id}')" style="color: var(--danger); background: none; border: none; cursor: pointer;"><i class="fa-solid fa-trash"></i></button></td>
+            <td style="white-space: nowrap; text-align: center;">
+                <div style="display: flex; gap: 0.5rem; justify-content: center; align-items: center;">
+                    <button type="button" onclick="event.stopPropagation(); openEditDispersion('${disp.id}')" title="Editar dispersión" style="color: #3b82f6; background: none; border: none; cursor: pointer; padding: 4px 6px; font-size: 0.95rem;">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                    <button type="button" onclick="event.stopPropagation(); deleteRow(this, 'Dispersión', '${disp.id}')" title="Eliminar dispersión" style="color: var(--danger); background: none; border: none; cursor: pointer; padding: 4px 6px; font-size: 0.95rem;">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </td>
         `;
         tbody.appendChild(tr);
     });
@@ -1882,36 +1942,69 @@ async function fetchDispersiones() {
 }
 
 async function saveDispersion() {
-    const cliente = document.getElementById('dispCliente').value;
+    const cliente = document.getElementById('dispCliente').value.trim();
     const sucursal = document.getElementById('dispSucursal').value;
     let fecha = document.getElementById('dispFecha').value;
     const monto = document.getElementById('dispMonto').value;
-    const calificador = document.getElementById('dispCalificador').value;
-    const closer = document.getElementById('dispCloser').value;
-    const obs = document.getElementById('dispObs').value;
+    const calificador = document.getElementById('dispCalificador').value.trim();
+    const closer = document.getElementById('dispCloser').value.trim();
+    const obs = document.getElementById('dispObs').value.trim();
 
     if(!cliente) {
         triggerNotification('Error', 'El nombre del cliente es obligatorio', 'warning');
         return;
     }
 
+    const cleanMonto = parseFloat(String(monto).replace(/[\$,]/g, '')) || 0;
+
     const dispData = {
         cliente: cliente,
         sucursal: sucursal,
         fecha: fecha,
-        monto: parseFloat(monto.replace(/[\$,]/g, '')) || 0,
+        monto: cleanMonto,
         calificador: calificador,
         closer: closer,
         observaciones: obs
     };
 
-    const { error } = await supabaseClient.from('dispersiones').insert([dispData]);
-    if(!error) {
-        triggerNotification('Éxito', 'Dispersión agregada correctamente', 'success');
-        await fetchDispersiones();
-        closeDispersionPanel();
+    if (currentDispersionId) {
+        const { error } = await supabaseClient
+            .from('dispersiones')
+            .update(dispData)
+            .eq('id', currentDispersionId);
+
+        if(!error) {
+            triggerNotification('Éxito', 'Dispersión actualizada correctamente', 'success');
+            await fetchDispersiones();
+            closeDispersionPanel();
+        } else {
+            console.error('Error al actualizar dispersión:', error);
+            triggerNotification('Error', 'No se pudo actualizar la dispersión: ' + (error.message || ''), 'warning');
+        }
     } else {
-        triggerNotification('Error', 'No se pudo guardar la dispersión', 'warning');
+        const { error } = await supabaseClient.from('dispersiones').insert([dispData]);
+        if(!error) {
+            triggerNotification('Éxito', 'Dispersión agregada correctamente', 'success');
+            await fetchDispersiones();
+            closeDispersionPanel();
+        } else {
+            console.error('Error al guardar dispersión:', error);
+            triggerNotification('Error', 'No se pudo guardar la dispersión: ' + (error.message || ''), 'warning');
+        }
+    }
+}
+
+async function deleteCurrentDispersion() {
+    if (!currentDispersionId) return;
+    if (confirm('¿Seguro que deseas eliminar esta Dispersión?')) {
+        const { error } = await supabaseClient.from('dispersiones').delete().eq('id', currentDispersionId);
+        if (!error) {
+            triggerNotification('Eliminado', 'Dispersión eliminada correctamente', 'success');
+            closeDispersionPanel();
+            await fetchDispersiones();
+        } else {
+            triggerNotification('Error', 'No se pudo eliminar la dispersión', 'warning');
+        }
     }
 }
 
