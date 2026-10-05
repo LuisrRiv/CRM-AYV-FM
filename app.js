@@ -1509,6 +1509,9 @@ async function saveLead() {
             if ((leadData.etapa === 'CITA' || leadData.fecha_cita) && typeof notifyEncargadoNuevaCita === 'function') {
                 notifyEncargadoNuevaCita(leadData, false);
             }
+            if (typeof notifyMetaConversion === 'function') {
+                notifyMetaConversion(leadData);
+            }
         } else {
             console.error('Error actualizando lead:', error);
             triggerNotification('Error', 'No se pudo actualizar el lead: ' + (error.message || ''), 'warning');
@@ -1521,6 +1524,9 @@ async function saveLead() {
             const createdRecord = (data && data[0]) ? data[0] : leadData;
             if ((leadData.etapa === 'CITA' || leadData.fecha_cita) && typeof notifyEncargadoNuevaCita === 'function') {
                 notifyEncargadoNuevaCita(createdRecord, true);
+            }
+            if (typeof notifyMetaConversion === 'function') {
+                notifyMetaConversion(createdRecord);
             }
         } else {
             console.error('Error creando lead:', error);
@@ -6630,4 +6636,166 @@ _Por favor mantente atento para recibir al cliente y registra la retroalimentaci
         }
     }
 }
+
+// ==========================================
+// Meta Ads Conversions API (CAPI) Integration
+// ==========================================
+const META_CONFIG = {
+    datasetId: '1761413277793954',
+    accessToken: 'EAAKOniz5arsBSj66oDBnC88xysA6BWkzqe1p84mIZC8NwbT5yFjAFCo3XpfbF7ubtPg4ZBpgQdFO3SBrHyhTKVOMJ5ckh3WeIoTZAFqrfSKjZC5AsZCtZADaE3higjdlabZCZCLys8kY5dP7dNZCAzettSDRv5mTNH2tF9MpRt26XWWydk6j0Wsbz7ZA2bPj11eQZDZD',
+    testEventCode: null // Define window.META_TEST_CODE para ver eventos en vivo en "Probar eventos"
+};
+
+// Cifrado SHA-256 requerido por Meta Conversions API
+async function hashSha256(value) {
+    if (!value || typeof value !== 'string') return null;
+    try {
+        const msgUint8 = new TextEncoder().encode(value.trim().toLowerCase());
+        const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgUint8);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch (e) {
+        console.warn('Error al generar SHA-256 para Meta:', e);
+        return null;
+    }
+}
+
+// Formateo y normalización internacional de teléfonos para Meta (E.164 sin +)
+function cleanPhoneForMeta(rawPhone) {
+    if (!rawPhone) return '';
+    let cleaned = String(rawPhone).replace(/\D/g, '');
+    if (cleaned.length === 10) {
+        cleaned = '52' + cleaned; // Prefijo México si son 10 dígitos
+    } else if (cleaned.startsWith('521') && cleaned.length === 13) {
+        cleaned = '52' + cleaned.substring(3);
+    }
+    return cleaned;
+}
+
+// Envío de eventos de conversión del CRM a Meta Ads
+async function notifyMetaConversion(lead) {
+    if (!lead) return;
+    const phone = lead.numero || lead.telefono || '';
+    const stage = (lead.etapa || '').toUpperCase().trim();
+
+    // Mapeo a Eventos Estándar oficiales de Meta Ads
+    let eventName = null;
+    let eventValue = 0;
+
+    if (stage === 'CITA') {
+        eventName = 'Schedule'; // Prospecto que agendó cita en sucursal
+    } else if (stage === 'DISPERSADO') {
+        eventName = 'Purchase'; // Venta/Operación concretada exitosamente
+        eventValue = 10000;
+    } else if (stage === 'EN PROCESO') {
+        eventName = 'Lead'; // Prospecto calificado en proceso activo
+    }
+
+    // Solo reportamos hitos de conversión significativos a Meta
+    if (!eventName) {
+        return;
+    }
+
+    const cleanedPhone = cleanPhoneForMeta(phone);
+    if (!cleanedPhone) {
+        console.log('[Meta CAPI] Evento omitido: el lead no tiene teléfono válido para matching.');
+        return;
+    }
+
+    console.log(`[Meta CAPI] Disparando evento '${eventName}' para '${lead.nombre || 'Lead'}' (${stage})...`);
+
+    const activeTestCode = window.META_TEST_CODE || META_CONFIG.testEventCode || undefined;
+
+    // 1. Intentar envío vía Supabase Edge Function (Server-Side oficial)
+    try {
+        const { data, error } = await supabaseClient.functions.invoke('meta-conversions', {
+            body: {
+                phone: cleanedPhone,
+                name: lead.nombre || '',
+                stage: stage,
+                eventName: eventName,
+                leadId: lead.id || '',
+                value: eventValue,
+                testEventCode: activeTestCode
+            }
+        });
+
+        if (!error && data && data.success) {
+            console.log('[Meta CAPI] ✅ Evento registrado con éxito en Meta vía Edge Function:', data);
+            return;
+        }
+        if (error) {
+            console.warn('[Meta CAPI] Edge Function en Supabase no respondió, activando fallback directo:', error);
+        }
+    } catch (edgeErr) {
+        console.warn('[Meta CAPI] Error invocando Edge Function, usando fallback directo:', edgeErr);
+    }
+
+    // 2. Fallback de Alta Disponibilidad: Envío directo a Meta Graph API desde el navegador
+    try {
+        const hashedPhone = await hashSha256(cleanedPhone);
+        const userData = { ph: [hashedPhone] };
+
+        if (lead.nombre && typeof lead.nombre === 'string') {
+            const parts = lead.nombre.trim().split(/\s+/);
+            if (parts[0]) {
+                const fnHash = await hashSha256(parts[0]);
+                if (fnHash) userData.fn = [fnHash];
+            }
+            if (parts.length > 1) {
+                const lnHash = await hashSha256(parts.slice(1).join(' '));
+                if (lnHash) userData.ln = [lnHash];
+            }
+        }
+
+        const payload = {
+            data: [
+                {
+                    event_name: eventName,
+                    event_time: Math.floor(Date.now() / 1000),
+                    action_source: 'system_generated',
+                    user_data: userData,
+                    custom_data: {
+                        currency: 'MXN',
+                        value: eventValue,
+                        crm_stage: stage,
+                        lead_id: lead.id ? String(lead.id) : undefined
+                    }
+                }
+            ]
+        };
+
+        if (activeTestCode) {
+            payload.test_event_code = activeTestCode;
+        }
+
+        const apiUrl = `https://graph.facebook.com/v20.0/${META_CONFIG.datasetId}/events?access_token=${encodeURIComponent(META_CONFIG.accessToken)}`;
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        if (response.ok && result.events_received) {
+            console.log(`[Meta CAPI] ✅ Evento '${eventName}' recibido con éxito por Meta Graph API:`, result);
+        } else {
+            console.warn('[Meta CAPI] Respuesta de Meta:', result);
+        }
+    } catch (directErr) {
+        console.error('[Meta CAPI] Error en fallback directo a Meta:', directErr);
+    }
+}
+
+// Utilidad global para probar eventos desde consola: testMetaEvent('3312345678', 'CITA', 'TEST12345')
+window.testMetaEvent = async function(phone = '3312345678', stage = 'CITA', testCode = null) {
+    if (testCode) window.META_TEST_CODE = testCode;
+    console.log(`[Test Meta CAPI] Probando evento con ${phone} (${stage})...`);
+    await notifyMetaConversion({
+        id: 'test-crm-id',
+        nombre: 'Cliente de Prueba',
+        numero: phone,
+        etapa: stage
+    });
+};
 
